@@ -6,6 +6,8 @@ ZEIL Hackathon — 9 October 2026 · Pack 30 · Justin Lai
 
 Live demo: https://zeil-show-your-skills.vercel.app/ — no installation or login required. Use fictional responses only. Both perspectives are available within one demo session after applicant approval.
 
+Judges can test the application directly using the [guided assessment walkthrough](#guided-assessment-walkthrough). The live application supplements the required submission video.
+
 ## Why this idea
 
 Graduates and career changers can struggle to show relevant ability through job titles alone. Recruiters also need concrete examples to inform a useful interview. Today's hackathon lets candidates demonstrate their approach through actual work; this prototype explores bringing that principle into a lightweight, optional ZEIL application feature.
@@ -36,7 +38,7 @@ Evidence cards describe observed responses; they do not rank candidates, infer p
 
 The prototype uses fictional records. It has no live ZEIL API integration or actual employer delivery. Scenarios generated from a job description, durable shareable links, a second reviewer model and scored AI evaluation are not implemented yet.
 
-Verification records: [initial connection](docs/checkpoint-1010.md) [core workflow](docs/checkpoint-1206.md) and [public deployment](docs/deployment.md).
+Verification records: [initial connection](docs/checkpoint-1010.md), [core workflow](docs/checkpoint-1206.md) and [public deployment](docs/deployment.md).
 
 ## Run locally
 
@@ -59,17 +61,61 @@ The engineering tests are not a claim for the "Prove it works" AI evaluation bon
 
 The check makes a small request to Google's Gemini API and prints its greeting, never the key. It uses the event-recommended `gemini-flash-latest` alias. Shared-quota/server errors get at most two retries with backoff. The event key is for the product, not coding-agent usage.
 
-## Demo walkthrough
+## Guided assessment walkthrough
 
-1. Read the customer message and the four policy references.
-2. Enter an answer or select "Use a fictional sample response". The sample deliberately promises a same-day refund that the policy does not support.
-3. Continue to generate one follow-up grounded in the answer and a policy reference.
-4. Revise the answer and explain the change, then select "Preview my evidence card".
-5. Inspect the four observations, exact source excerpts, policy links and interview questions.
-6. Select "Share with recruiter preview". The recruiter view shows the same evidence plus both source answers.
-7. Return to the applicant view to withdraw sharing or revise the response.
+This walkthrough demonstrates an applicant responding to feedback, inspecting an evidence card and explicitly approving recruiter access. Allow approximately five minutes, including model response time. The prompts below use fictional information and can be copied directly into the application.
 
-Sharing only changes access between perspectives within this local demo session; it does not send an application or contact an employer. Draft text is retained in the current page during failures, but unsent edits are lost on reload. Successfully processed answers are restored from the session while it remains active.
+### 1. Open the application
+
+Open [the live demo](https://zeil-show-your-skills.vercel.app/). No account, installation or API key entry is required. A new session starts in **Applicant view** with the heading **Let your work do the talking.**
+
+If returning to an existing attempt, select **Applicant view**. If an evidence card is displayed, select **Revise my response**, then **Start a new attempt** and confirm the reset. This discards that attempt's answers and evidence. Alternatively, open the live URL in a fresh private browsing session.
+
+### 2. Submit the initial response
+
+Read **One customer. Two charges.** and the four refund-policy references. Scroll to **How would you respond?**, then select **Use a fictional sample response**. The application fills **Your response and next action** automatically.
+
+The sample deliberately promises that the customer will receive the refund today, although policy P2 states that funds normally arrive in 3–5 business days and same-day arrival cannot be guaranteed.
+
+Select **Continue to my follow-up** once and wait for **A fresh perspective** to appear. This action makes a real Gemini request. The result should contain one contextual question, an exact excerpt from the initial response and a policy reference. Wording varies between runs; the same-day refund promise is the intended issue for this example.
+
+### 3. Enter the revised response
+
+In **Your revised response and reasoning**, replace all existing text with the following:
+
+```text
+Hi Alex, I am sorry you have had to contact us again about the duplicate charge, especially when you need the money for groceries. Please send your order number so I can verify the payment record. Please do not send full card details.
+
+If I confirm a duplicate payment, I will arrange a refund. Funds normally arrive in 3–5 business days; I cannot guarantee arrival today. I will escalate your urgent financial hardship to our support lead, although this does not guarantee a faster refund or compensation. I will update you within one business day.
+
+I changed my earlier promise of same-day arrival because P2 does not allow that guarantee. I would verify the records first, arrange any confirmed duplicate refund, and track the escalation and update.
+```
+
+If the generated follow-up raises another issue, adjust the revision to address that question before continuing.
+
+Select **Preview my evidence card** once and wait for **Your work. In your own words.** This action makes the second real Gemini request.
+
+### 4. Inspect the result
+
+The card initially displays **Private preview**. Inspect the four criteria: **Customer communication**, **Policy handling**, **Ownership** and **Adaptation**. Each supported observation includes an exact quotation and identifies its source response. Select **View source** to inspect the quoted text in context.
+
+Scroll to **The work behind the card** to compare the original and revised responses and read the follow-up. Review **Worth exploring in an interview** for suggested questions. The application validates output structure and quotations before displaying the card. Generated observations can vary and still require human judgment; the card provides no overall candidate score or hiring decision.
+
+### 5. Open the recruiter perspective
+
+Select **Share with recruiter preview**. The application switches to **Recruiter view**, showing **See the thinking behind the answer.** and **Shared in demo**. Inspect the observations alongside both source answers. This demonstrates the applicant's approval step; it does not contact an employer or submit a real application.
+
+### 6. Verify withdrawal (optional)
+
+Select **Back to applicant view**, then **Withdraw from preview**. The card becomes private again and **Recruiter view** becomes unavailable. This step makes no Gemini request.
+
+### Usage and recovery
+
+A normal complete walkthrough makes two Gemini requests. Reading results, switching perspectives, sharing and withdrawing do not call Gemini. Regenerating evidence makes another request, and automatic retries can add requests. The application limits each two-hour session to twelve generation requests; this is an application safeguard, not the organiser's token allowance.
+
+If a provider or validation error appears, the current form text remains available. Wait before retrying; do not repeatedly submit while a request is running. Unsent edits are lost on reload, while successfully processed answers are restored during the active session.
+
+The [hackathon FAQ](https://hackathon.zeil.com/#faq) states that the event keys share a quota and expire on **12 October 2026 at 18:00 NZ time**. AI generation depends on that key remaining active and quota being available. The live demo complements the required video of at most three minutes with the participant on camera.
 
 ## API boundary
 
