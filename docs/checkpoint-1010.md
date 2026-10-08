@@ -20,4 +20,8 @@ The project's `npm run check:gemini` command completed successfully against Goog
 
 Private repository: https://github.com/laizhen1/zeil-show-your-skills
 
+- Initial commit `6f3dff4` pushed to `main` under Justin Lai's configured Git identity.
+- Collaborator invitation sent to `mustafa.sheikh@zeil.com` (GitHub account `mzeils`); awaiting acceptance.
+- Staged-content secret scan passed for all eight project files before the initial push; `.env` is ignored and untracked.
+
 This initial checkpoint contains the idea, configuration template, connection script and staged-content secret scan. Product UI and actual ZEIL API integration belong to subsequent development.
