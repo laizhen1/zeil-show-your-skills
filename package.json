@@ -4,7 +4,9 @@
   "private": true,
   "description": "Optional work scenarios and evidence cards for ZEIL applications — hackathon integration prototype.",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
@@ -12,5 +14,8 @@
     "check:core": "node scripts/check-core.mjs",
     "check:gemini": "node scripts/check-gemini.mjs",
     "check:secrets": "node scripts/check-secrets.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.1"
   }
 }

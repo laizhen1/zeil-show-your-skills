@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { validateFollowup, validateEvidence } from '../src/schemas.mjs';
 
-const base = 'http://127.0.0.1:4173';
+const base = process.env.APP_URL || 'http://127.0.0.1:4173';
 let cookie;
 async function call(path, body, expected = 200) {
   const response = await fetch(base + path, {

@@ -38,7 +38,7 @@ Verification records: [initial connection](docs/checkpoint-1010.md) and [core wo
 
 ## Run locally
 
-Requires Node.js 22 or newer. The application uses built-in Node APIs and browser JavaScript; no dependency installation or build step is required.
+Requires Node.js 22 or newer. The application uses built-in Node APIs and browser JavaScript; run npm install before starting. No frontend build step is required.
 
 1. Copy `.env.example` to `.env` in this project folder.
 2. Set `GEMINI_API_KEY` privately in `.env`. Do not paste the key into chat, browser code, a shell profile or a coding assistant's configuration.
@@ -50,10 +50,10 @@ Requires Node.js 22 or newer. The application uses built-in Node APIs and browse
 ## Verify Gemini and the core API
 
 - `npm run check:gemini`: make one real Gemini request and print a greeting.
-- `npm test`: run ten deterministic validation and HTTP integration tests with a fixture model; these do not call Gemini or consume quota.
+- `npm test`: run deterministic validation and HTTP integration tests with a fixture model; these do not call Gemini or consume quota.
 - With the application running, `npm run check:core`: run the complete HTTP workflow using two real Gemini requests and fictional answers. It verifies the follow-up, all four evidence criteria, exact quotations, approval, recruiter access and withdrawal.
 
-The ten engineering tests are not a claim for the "Prove it works" AI evaluation bonus. A scored set of model inputs and measured before/after improvement remains later work.
+The engineering tests are not a claim for the "Prove it works" AI evaluation bonus. A scored set of model inputs and measured before/after improvement remains later work.
 
 The check makes a small request to Google's Gemini API and prints its greeting, never the key. It uses the event-recommended `gemini-flash-latest` alias. Shared-quota/server errors get at most two retries with backoff. The event key is for the product, not coding-agent usage.
 
@@ -82,9 +82,15 @@ Sharing only changes access between perspectives within this local demo session;
 | `POST /api/revise` | Withdraw approval and clear the previous evidence before editing. |
 | `POST /api/reset` | Clear this attempt while preserving the session's request limit. |
 
-POST endpoints accept JSON. Answers must contain 40–5,000 characters. Sessions expire after two hours, have a twelve-generation-request limit, and are stored only in memory. The server listens on loopback only; public hosting, real authentication and persistent storage are later integration work.
+POST endpoints accept JSON. Answers must contain 40–5,000 characters. Sessions expire after two hours, have a twelve-generation-request limit, and use memory locally or a private Vercel Blob store when hosted. Conditional writes prevent concurrent requests from overwriting state. Access expires after two hours; private stored records remain until the project owner removes them. Use fictional data only. Real authentication and employer permissions remain integration work.
 
 Before each push, stage intended files and run `npm run check:secrets`. Confirm that `.env` remains ignored. The scan is a targeted guard for environment files and Google API keys, not a comprehensive secret detector.
+
+## Vercel deployment
+
+Import this repository with the Node preset. Set GEMINI_API_KEY as a sensitive server environment variable and connect a private Vercel Blob store. The store provides BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID. The server fails closed if deployed without private storage. Never put credentials in frontend variables.
+
+The root server.mjs starts the Node HTTP application. Git pushes to the connected production branch trigger deployments. Set APP_URL to the deployment origin when running npm run check:core against the hosted app.
 
 ## Integration boundary
 

@@ -6,6 +6,7 @@ import { generateStructured } from './gemini.mjs';
 import { scenario } from './scenario.mjs';
 import { followupSchema, evidenceSchema, validateFollowup, validateEvidence } from './schemas.mjs';
 import { systemInstruction, followupPrompt, evidencePrompt } from './prompts.mjs';
+import { deploymentSessions } from './sessions.mjs';
 
 const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
@@ -22,9 +23,7 @@ const checkedAnswer = value => {
   return value.trim();
 };
 
-export function createApp({ generate = generateStructured } = {}) {
-  const sessions = new Map();
-  const ttl = 2 * 60 * 60 * 1000;
+export function createApp({ generate = generateStructured, sessions = deploymentSessions() } = {}) {
   const server = http.createServer(async (req, res) => {
     const send = (status, payload) => {
       res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -36,9 +35,12 @@ export function createApp({ generate = generateStructured } = {}) {
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
       const port = server.address()?.port;
-      const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
-      if (!hosts.includes(req.headers.host)) throw bad(403, 'Unrecognised host. Open the local app URL.');
-      if (req.headers.origin && !hosts.map(host => `http://${host}`).includes(req.headers.origin)) throw bad(403, 'This request must come from the app.');
+      const hosts = process.env.VERCEL
+        ? [process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_BRANCH_URL].filter(Boolean)
+        : [`127.0.0.1:${port}`, `localhost:${port}`];
+      if (!hosts.includes(req.headers.host)) throw bad(403, 'Unrecognised application host.');
+      const protocol = process.env.VERCEL ? 'https' : 'http';
+      if (req.headers.origin && req.headers.origin !== `${protocol}://${req.headers.host}`) throw bad(403, 'This request must come from the app.');
       const path = new URL(req.url, `http://${req.headers.host}`).pathname;
       if (req.method === 'GET' && staticFiles.has(path)) {
         const [file, type] = staticFiles.get(path);
@@ -46,16 +48,17 @@ export function createApp({ generate = generateStructured } = {}) {
         return res.end(await readFile(new URL(`../public/${file}`, import.meta.url)));
       }
       if (!path.startsWith('/api/')) return send(404, { error: 'Not found.' });
-      for (const [id, session] of sessions) if (Date.now() - session.created > ttl) sessions.delete(id);
       const cookie = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('zeil_session='))?.slice(13);
-      let session = sessions.get(cookie);
+      const record = await sessions.read(cookie);
+      let session = record?.data;
+      let version = record?.version;
+      const save = async () => { version = await sessions.write(cookie, session, version); };
       if (req.method === 'GET' && path === '/api/session') {
         if (!session) {
-          if (sessions.size >= 100) throw bad(503, 'Demo capacity reached. Please try again later.');
           const id = randomBytes(24).toString('hex');
           session = { created: Date.now(), calls: 0, busy: false, initial: '', revision: '', followup: null, evidence: null, approved: false };
-          sessions.set(id, session);
-          res.setHeader('Set-Cookie', `zeil_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200`);
+          await sessions.write(id, session);
+          res.setHeader('Set-Cookie', `zeil_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200${process.env.VERCEL ? '; Secure' : ''}`);
         }
         return send(200, { scenario, state: { initial: session.initial, revision: session.revision, followup: session.followup, evidence: session.evidence, approved: session.approved, model: session.model } });
       }
@@ -75,42 +78,48 @@ export function createApp({ generate = generateStructured } = {}) {
       let body;
       try { body = JSON.parse(raw); } catch { throw bad(400, 'The request could not be read. Please try again.'); }
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw bad(400, 'Invalid request.');
-      if (session.busy) throw bad(409, 'A response is already being prepared. Please wait.');
+      if (session.busy && Date.now() - session.busy < 180_000) throw bad(409, 'A response is already being prepared. Please wait.');
       if (path === '/api/reset') {
         Object.assign(session, { initial: '', revision: '', followup: null, evidence: null, approved: false });
+        await save();
         return send(200, { reset: true });
       }
       if (path === '/api/share') {
         if (!session.evidence) throw bad(409, 'Prepare and preview your evidence card first.');
         session.approved = true;
+        await save();
         return send(200, { approved: true });
       }
-      if (path === '/api/unshare') { session.approved = false; return send(200, { approved: false }); }
-      if (path === '/api/revise') { session.approved = false; session.evidence = null; return send(200, { approved: false }); }
+      if (path === '/api/unshare') { session.approved = false; await save(); return send(200, { approved: false }); }
+      if (path === '/api/revise') { session.approved = false; session.evidence = null; await save(); return send(200, { approved: false }); }
       if (!['/api/followup', '/api/evidence'].includes(path)) throw bad(404, 'Not found.');
       if (session.calls >= 12) throw bad(429, 'This demo session has reached its AI request limit. Please return later.');
       if (path === '/api/followup' && session.followup) throw bad(409, 'A follow-up already exists. Start a new attempt to change the original answer.');
       if (path === '/api/evidence' && !session.followup) throw bad(409, 'Complete the first response before preparing evidence.');
       const answer = checkedAnswer(path === '/api/followup' ? body.answer : body.revision);
-      session.busy = true;
+      session.busy = Date.now();
       session.calls++;
+      await save();
+      let payload;
       try {
         if (path === '/api/followup') {
           const result = await generate(followupPrompt(answer), followupSchema, systemInstruction);
           if (!validateFollowup(result.data, answer)) throw bad(502, 'The follow-up did not pass our evidence checks. Your answer is preserved; please try again.');
           Object.assign(session, { initial: answer, followup: result.data, model: result.model });
-          return send(200, { followup: result.data });
-        }
+          payload = { followup: result.data };
+        } else {
         const result = await generate(evidencePrompt(session.initial, session.followup, answer), evidenceSchema, systemInstruction);
         if (!validateEvidence(result.data, session.initial, answer)) throw bad(502, 'The evidence card contained invalid or unsupported excerpts. Nothing was shared. Your response is preserved; please try again.');
         Object.assign(session, { revision: answer, evidence: result.data, model: result.model, approved: false });
-        return send(200, { evidence: result.data, model: result.model });
+        payload = { evidence: result.data, model: result.model };
+        }
       } catch (error) {
         if (error.status) throw error;
         // Only return the controlled messages from our own API wrapper, never raw upstream content.
         const safe = /^(Gemini HTTP \d{3}\.|Gemini connection failed|The AI returned an unreadable|Gemini returned no text|Set GEMINI_API_KEY)/.test(error.message);
         throw bad(502, safe ? error.message : 'The AI service could not prepare a response. Your text is preserved; please try again.');
-      } finally { session.busy = false; }
+      } finally { session.busy = false; await save(); }
+      return send(200, payload);
     } catch (error) {
       if (!res.headersSent) send(error.status || 500, { error: error.status ? error.message : 'Something went wrong. Please try again.' });
       else res.end();
