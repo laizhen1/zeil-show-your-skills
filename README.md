@@ -55,6 +55,6 @@ Define the exact demo path and acceptance criteria before adding UI. Prioritise 
 
 At this checkpoint, `src/gemini.mjs` is a Node-only API boundary using built-in `fetch`; `scripts/check-gemini.mjs` exercises it. The REST request follows the event quickstart. No third-party starter kit or previous project code was imported.
 
-AI assistance: Codex was used for planning, initial code, documentation and repository setup. Product direction and idea selection: Justin Lai.
+AI was used for planning and coding assistance.
 
 Keep the repository private and share it with the organiser identified in the event instructions. The final submission requires a video of at most three minutes with the participant on camera, repository access, bonus evidence and pack number 30 before 16:00 NZ time.
