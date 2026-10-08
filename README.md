@@ -16,12 +16,12 @@ Product hypothesis: an employer-approved, short fictional work scenario can give
 
 ## Core experience
 
-1. The applicant opens a fixed, reviewed customer-support scenario with a supplied refund policy. Employer generation and approval controls are an optional later addition.
+1. The applicant chooses one of two fixed scenarios: customer support with a refund policy, or software engineering with an incident runbook. Employer generation and approval controls are an optional later addition.
 2. After applying, an applicant optionally responds to the scenario and one contextual follow-up.
 3. The applicant previews an evidence card before sharing it.
 4. A recruiter sees exact excerpts, the applicant's revision, and unresolved interview questions.
 
-The first role family is customer support. The demo uses a fictional double-charge complaint and a supplied refund policy. The interesting moment is how an applicant revises their response when asked about a policy constraint.
+The demo includes a fictional customer-support double-charge complaint and a software-engineering payment incident. Each has its own reference rules, sample answer and criterion labels. The interesting moment is how an applicant revises their response when asked about a policy constraint.
 
 Evidence cards describe observed responses; they do not rank candidates, infer personal traits, or make hiring decisions. The exercise is optional and does not block an application. It is not proof of identity or independent authorship.
 
@@ -29,7 +29,7 @@ Evidence cards describe observed responses; they do not rank candidates, infer p
 
 - JavaScript frontend with ZEIL reference styling, applicant and recruiter perspectives.
 - Actual server-side Gemini calls for one adaptive follow-up and structured evidence generation.
-- Four evidence criteria: communication, policy handling, ownership and adaptation.
+- Four evidence criteria with role-specific labels: communication, handling of reference rules, ownership and adaptation.
 - JSON Schema validation and exact-quotation checks before model output is accepted.
 - Applicant preview, explicit sharing with the local recruiter view, withdrawal and revision.
 - Original answer and revised answer remain visible beside the evidence.
@@ -57,6 +57,14 @@ Requires Node.js 22 or newer. The application uses built-in Node APIs and browse
 - `npm test`: run deterministic validation and HTTP integration tests with a fixture model; these do not call Gemini or consume quota.
 - With the application running, `npm run check:core`: run the complete HTTP workflow using two real Gemini requests and fictional answers. It verifies the follow-up, all four evidence criteria, exact quotations, approval, recruiter access and withdrawal.
 
+The core check defaults to customer support. Set `SCENARIO=engineering` to verify the software-engineering workflow instead. Set `APP_URL` to the server origin to check a local or hosted instance. For example, in PowerShell:
+
+```powershell
+$env:SCENARIO = 'engineering'
+$env:APP_URL = 'https://zeil-show-your-skills.vercel.app'
+npm run check:core
+```
+
 The engineering tests are not a claim for the "Prove it works" AI evaluation bonus. A scored set of model inputs and measured before/after improvement remains later work.
 
 The check makes a small request to Google's Gemini API and prints its greeting, never the key. It uses the event-recommended `gemini-flash-latest` alias. Shared-quota/server errors get at most two retries with backoff. The event key is for the product, not coding-agent usage.
@@ -73,7 +81,7 @@ If returning to an existing attempt, select **Applicant view**. If an evidence c
 
 ### 2. Submit the initial response
 
-Read **One customer. Two charges.** and the four refund-policy references. Scroll to **How would you respond?**, then select **Use a fictional sample response**. The application fills **Your response and next action** automatically.
+Select **Customer Support Specialist** under **Choose your work scenario**. Read **One customer. Two charges.** and the four refund-policy references. Scroll to **How would you respond?**, then select **Use a fictional sample response**. The application fills **Your response and next action** automatically.
 
 The sample deliberately promises that the customer will receive the refund today, although policy P2 states that funds normally arrive in 3–5 business days and same-day arrival cannot be guaranteed.
 
@@ -109,6 +117,27 @@ Select **Share with recruiter preview**. The application switches to **Recruiter
 
 Select **Back to applicant view**, then **Withdraw from preview**. The card becomes private again and **Recruiter view** becomes unavailable. This step makes no Gemini request.
 
+### Alternative walkthrough: software engineering
+
+1. Under **Choose your work scenario**, select **Software Engineer**. Confirm the reset if a previous attempt exists. Read **One deployment. Duplicate payments.** and the incident runbook.
+2. Select **Use a fictional sample response**, then **Continue to my follow-up**. The sample deliberately proposes replaying timed-out payments with new idempotency keys, conflicting with runbook P1. Gemini should ask a grounded question about this risk; exact wording varies.
+3. In **Your revised response and reasoning**, replace the sample with the text below. Adjust it if necessary to address the actual follow-up, then select **Preview my evidence card**.
+
+```text
+Hi Sam, we have three reports of possible duplicate charges after the retry update. The release is a hypothesis, not a confirmed cause. I will notify the incident lead and coordinate disabling the affected retry path or rolling back while we investigate.
+
+I will not replay a timed-out payment until I reconcile its status with the provider. A timeout may occur after a successful charge. Any approved retry must reuse the original idempotency key, rather than creating a new one. I will compare pre- and post-release behaviour using redacted order IDs, request IDs, idempotency keys and provider transaction status.
+
+In the sandbox I will test a timeout after successful payment and repeated submissions, verifying at most one charge per order and correct reconciliation. I will monitor production with the incident lead after mitigation. I will send an update within 15 minutes with known impact, uncertainties, actions, owner and the next update, and coordinate confirmed duplicate charges with support. I will not promise a recovery or refund time before verification.
+
+I changed my original replay plan because a new key could cause another charge. Reconciliation and reuse of the original key address that risk; a passing health check alone would not prove recovery.
+```
+
+4. Inspect **Incident communication**, **Technical reasoning and risk**, **Investigation and recovery** and **Adaptation**, including exact excerpts and both source answers.
+5. Select **Share with recruiter preview** to inspect the recruiter perspective. Withdrawal works as described above.
+
+For either scenario, applicants can select **Write my own response** and type their own answer instead of loading a sample. This clears an existing draft only after confirmation. Selecting a scenario or loading a sample does not call Gemini. Changing scenarios clears the previous attempt and sharing approval but preserves the session's generation limit. The application supports these two reviewed examples; custom scenario creation is not included.
+
 ### Usage and recovery
 
 A normal complete walkthrough makes two Gemini requests. Reading results, switching perspectives, sharing and withdrawing do not call Gemini. Regenerating evidence makes another request, and automatic retries can add requests. The application limits each two-hour session to twelve generation requests; this is an application safeguard, not the organiser's token allowance.
@@ -121,7 +150,8 @@ The [hackathon FAQ](https://hackathon.zeil.com/#faq) states that the event keys 
 
 | Endpoint | Behaviour |
 | --- | --- |
-| `GET /api/session` | Create or restore an isolated session and return the fixed scenario and processed state. |
+| `GET /api/session` | Create or restore an isolated session and return scenario choices, the selected scenario and processed state. |
+| `POST /api/scenario` | Select a supported `scenarioId`, clear the previous attempt and withdraw sharing without resetting the generation limit. |
 | `POST /api/followup` | Validate `answer`, call Gemini, validate the question and exact anchor quote, then retain the result. |
 | `POST /api/evidence` | Validate `revision`, call Gemini using server-held original answer and follow-up, then validate all four observations and quotes. |
 | `POST /api/share` | Approve the current evidence for the local recruiter preview. |

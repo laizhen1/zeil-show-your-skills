@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../src/server.mjs';
-import { scenario } from '../src/scenario.mjs';
+import { scenario, engineeringScenario } from '../src/scenario.mjs';
 import { validateFollowup, validateEvidence } from '../src/schemas.mjs';
 
 const initial = scenario.sampleAnswer;
@@ -125,4 +125,53 @@ test('session state is isolated between browsers', async t => {
   const unrelated = await fetch(base + '/api/session').then(r => r.json());
   assert.equal(unrelated.state.initial, '');
   assert.equal((await fetch(base + '/api/recruiter')).status, 401);
+});
+
+test('engineering workflow uses its runbook and restores the selected scenario', async t => {
+  const engineeringRevision = 'I will reconcile the provider status before any retry and reuse the original idempotency key. I will test a timeout after successful payment in the sandbox and verify one charge per order.';
+  const { call } = await harness(t, async (prompt, schema) => {
+    const parsed = JSON.parse(prompt);
+    assert.equal(parsed.scenario.id, engineeringScenario.id);
+    assert.equal(parsed.scenario.policies[0].title, 'Contain before replaying');
+    assert.equal(parsed.scenario.criteria[0].label, 'Incident communication');
+    assert.equal(Object.hasOwn(parsed.scenario, 'sampleAnswer'), false);
+    return { model: 'test-fixture', data: schema.properties.question
+      ? { question: 'How would you revise the plan to replay payments with a new idempotency key?', anchorQuote: 'replay every timed-out request with a new idempotency key', policyId: 'P1' }
+      : { observations: engineeringScenario.criteria.map(c => ({ criterion: c.id, status: 'observed', source: 'revision', quote: 'reuse the original idempotency key', observation: 'The revision specifies reusing the original key for retry safety.', policyIds: ['P1'] })), interviewQuestions: ['How would you confirm the scope of the incident?'] } };
+  });
+  assert.equal((await call('/api/session')).data.scenarios.length, 2);
+  assert.equal((await call('/api/scenario', { scenarioId: engineeringScenario.id })).status, 200);
+  assert.equal((await call('/api/session')).data.scenario.id, engineeringScenario.id);
+  assert.equal((await call('/api/followup', { scenarioId: engineeringScenario.id, answer: engineeringScenario.sampleAnswer })).status, 200);
+  assert.equal((await call('/api/evidence', { scenarioId: engineeringScenario.id, revision: engineeringRevision })).status, 200);
+  await call('/api/share', {});
+  assert.equal((await call('/api/recruiter')).data.scenario.id, engineeringScenario.id);
+  await call('/api/scenario', { scenarioId: scenario.id });
+  const restored = (await call('/api/session')).data;
+  assert.equal(restored.scenario.id, scenario.id);
+  assert.equal(restored.state.initial, '');
+  assert.equal(restored.state.followup, null);
+  assert.equal(restored.state.evidence, null);
+  assert.equal(restored.state.approved, false);
+  assert.equal((await call('/api/recruiter')).status, 403);
+});
+
+test('unknown scenarios and stale-tab submissions are rejected before model calls', async t => {
+  let calls = 0;
+  const { call } = await harness(t, async () => { calls++; return {}; });
+  await call('/api/session');
+  assert.equal((await call('/api/scenario', { scenarioId: 'untrusted-custom-scenario' })).status, 400);
+  await call('/api/scenario', { scenarioId: engineeringScenario.id });
+  assert.equal((await call('/api/followup', { scenarioId: scenario.id, answer: initial })).status, 409);
+  assert.equal(calls, 0);
+});
+
+test('switching scenarios does not reset the session generation limit', async t => {
+  let calls = 0;
+  const { call } = await harness(t, async () => { calls++; return { data: {} }; });
+  await call('/api/session');
+  for (let i = 0; i < 12; i++) await call('/api/followup', { answer: initial });
+  await call('/api/scenario', { scenarioId: engineeringScenario.id });
+  assert.equal((await call('/api/followup', { answer: engineeringScenario.sampleAnswer })).status, 429);
+  assert.equal(calls, 12);
 });

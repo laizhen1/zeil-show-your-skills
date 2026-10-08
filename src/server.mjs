@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { generateStructured } from './gemini.mjs';
-import { scenario } from './scenario.mjs';
+import { scenario, getScenario, scenarioOptions } from './scenario.mjs';
 import { followupSchema, evidenceSchema, validateFollowup, validateEvidence } from './schemas.mjs';
 import { systemInstruction, followupPrompt, evidencePrompt } from './prompts.mjs';
 import { deploymentSessions } from './sessions.mjs';
@@ -60,12 +60,13 @@ export function createApp({ generate = generateStructured, sessions = deployment
           await sessions.write(id, session);
           res.setHeader('Set-Cookie', `zeil_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200${process.env.VERCEL ? '; Secure' : ''}`);
         }
-        return send(200, { scenario, state: { initial: session.initial, revision: session.revision, followup: session.followup, evidence: session.evidence, approved: session.approved, model: session.model } });
+        return send(200, { scenario: getScenario(session.scenarioId) || scenario, scenarios: scenarioOptions, state: { initial: session.initial, revision: session.revision, followup: session.followup, evidence: session.evidence, approved: session.approved, model: session.model } });
       }
       if (!session) throw bad(401, 'Your demo session expired. Reload the page to start again.');
+      const selectedScenario = getScenario(session.scenarioId) || scenario;
       if (req.method === 'GET' && path === '/api/recruiter') {
         if (!session.approved) throw bad(403, 'The applicant has not shared this evidence card.');
-        return send(200, { initial: session.initial, revision: session.revision, followup: session.followup, evidence: session.evidence, model: session.model });
+        return send(200, { scenario: selectedScenario, initial: session.initial, revision: session.revision, followup: session.followup, evidence: session.evidence, model: session.model });
       }
       if (req.method !== 'POST') throw bad(405, 'Method not allowed.');
       if (req.headers['content-type']?.split(';')[0] !== 'application/json') throw bad(415, 'Send a JSON request.');
@@ -79,6 +80,13 @@ export function createApp({ generate = generateStructured, sessions = deployment
       try { body = JSON.parse(raw); } catch { throw bad(400, 'The request could not be read. Please try again.'); }
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw bad(400, 'Invalid request.');
       if (session.busy && Date.now() - session.busy < 180_000) throw bad(409, 'A response is already being prepared. Please wait.');
+      if (path === '/api/scenario') {
+        const next = getScenario(body.scenarioId);
+        if (!next) throw bad(400, 'Choose one of the available scenarios.');
+        Object.assign(session, { scenarioId: next.id, initial: '', revision: '', followup: null, evidence: null, approved: false, model: '' });
+        await save();
+        return send(200, { scenario: next });
+      }
       if (path === '/api/reset') {
         Object.assign(session, { initial: '', revision: '', followup: null, evidence: null, approved: false });
         await save();
@@ -93,6 +101,7 @@ export function createApp({ generate = generateStructured, sessions = deployment
       if (path === '/api/unshare') { session.approved = false; await save(); return send(200, { approved: false }); }
       if (path === '/api/revise') { session.approved = false; session.evidence = null; await save(); return send(200, { approved: false }); }
       if (!['/api/followup', '/api/evidence'].includes(path)) throw bad(404, 'Not found.');
+      if (body.scenarioId !== undefined && body.scenarioId !== selectedScenario.id) throw bad(409, 'The scenario changed in another tab. Reload before continuing.');
       if (session.calls >= 12) throw bad(429, 'This demo session has reached its AI request limit. Please return later.');
       if (path === '/api/followup' && session.followup) throw bad(409, 'A follow-up already exists. Start a new attempt to change the original answer.');
       if (path === '/api/evidence' && !session.followup) throw bad(409, 'Complete the first response before preparing evidence.');
@@ -103,12 +112,12 @@ export function createApp({ generate = generateStructured, sessions = deployment
       let payload;
       try {
         if (path === '/api/followup') {
-          const result = await generate(followupPrompt(answer), followupSchema, systemInstruction);
+          const result = await generate(followupPrompt(answer, selectedScenario), followupSchema, systemInstruction);
           if (!validateFollowup(result.data, answer)) throw bad(502, 'The follow-up did not pass our evidence checks. Your answer is preserved; please try again.');
           Object.assign(session, { initial: answer, followup: result.data, model: result.model });
           payload = { followup: result.data };
         } else {
-        const result = await generate(evidencePrompt(session.initial, session.followup, answer), evidenceSchema, systemInstruction);
+        const result = await generate(evidencePrompt(session.initial, session.followup, answer, selectedScenario), evidenceSchema, systemInstruction);
         if (!validateEvidence(result.data, session.initial, answer)) throw bad(502, 'The evidence card contained invalid or unsupported excerpts. Nothing was shared. Your response is preserved; please try again.');
         Object.assign(session, { revision: answer, evidence: result.data, model: result.model, approved: false });
         payload = { evidence: result.data, model: result.model };
