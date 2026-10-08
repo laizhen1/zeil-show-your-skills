@@ -63,8 +63,17 @@ function evidenceHtml() {
   <hr><p class="section-label">Evidence provenance</p><p>Generated with Gemini.<br>Exact quotations checked by the application.<br>Scenario: ${e(state.scenario.id)}.</p><p>Use fictional responses only. Session access expires after two hours. Hosted responses are stored privately for this demo; local sessions disappear when the server restarts.</p></aside></div>`, 2);
 }
 
+let renderedScreen = '';
+
 function render(focus = false) {
+  const screen = `${state.scenario?.id}:${state.view}:${state.evidence ? 'evidence' : state.followup ? 'followup' : 'response'}`;
   app.innerHTML = state.evidence ? evidenceHtml() : responseHtml();
+  // Animate navigation, without replaying motion for loading states or draft actions.
+  if (screen !== renderedScreen) {
+    app.querySelector('.screen-title')?.classList.add('heading-enter');
+    app.querySelectorAll('.workspace, .evidence-top, .review-layout').forEach(panel => panel.classList.add('panel-enter'));
+  }
+  renderedScreen = screen;
   if (focus) document.querySelector('.screen-title')?.focus({ preventScroll: true });
 }
 
