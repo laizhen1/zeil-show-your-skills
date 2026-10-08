@@ -1,0 +1,25 @@
+export const scenario = {
+  id: 'customer-support-double-charge-v1',
+  company: 'Harbour Goods',
+  role: 'Customer Support Specialist',
+  location: 'Auckland, NZ',
+  title: 'One customer. Two charges.',
+  duration: '5–7 minutes',
+  description: 'Help a customer resolve a duplicate payment while setting clear, realistic expectations.',
+  customer: 'Alex Morgan',
+  message: 'Hi, I was charged twice for my $89 order yesterday. I already emailed and nobody has replied. I need that money for groceries today. Can you please fix this now?',
+  task: 'Write the reply you would send Alex, then briefly explain what you would do next. Use the policy below. There is no need to share personal information.',
+  policies: [
+    { id: 'P1', title: 'Verify first', text: 'Confirm the order number and check the payment record before confirming a duplicate charge. Never request a full card number, password or security code.' },
+    { id: 'P2', title: 'Refund timing', text: 'A confirmed duplicate charge can be refunded. Funds normally arrive in 3–5 business days. Same-day arrival cannot be guaranteed.' },
+    { id: 'P3', title: 'Urgent situations', text: 'Escalate urgent financial hardship to the support lead. Escalation does not guarantee a faster refund or compensation.' },
+    { id: 'P4', title: 'Own the follow-up', text: 'Acknowledge previous contact, explain the next action, and offer an update within one business day.' },
+  ],
+  criteria: [
+    { id: 'communication', label: 'Customer communication', description: 'Acknowledge the concern and explain the next step clearly.' },
+    { id: 'policy', label: 'Policy handling', description: 'Work within the supplied refund and verification policy.' },
+    { id: 'ownership', label: 'Ownership', description: 'Describe a practical action and a follow-up.' },
+    { id: 'adaptation', label: 'Adaptation', description: 'Respond thoughtfully to a relevant follow-up.' },
+  ],
+  sampleAnswer: 'Hi Alex, I am sorry you have been charged twice and have had to contact us again. I understand you need the money urgently. Please send your order number so I can check the payments. Once I confirm the duplicate charge, I will arrange the refund today and make sure you get your money back today. I will also flag this with our support lead and update you within one business day.\n\nMy next step is to check the order and payment history, then refund any confirmed duplicate charge.',
+};

@@ -6,6 +6,10 @@
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "test": "node --test",
+    "check:core": "node scripts/check-core.mjs",
     "check:gemini": "node scripts/check-gemini.mjs",
     "check:secrets": "node scripts/check-secrets.mjs"
   }

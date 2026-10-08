@@ -10,9 +10,9 @@ Graduates and career changers can struggle to show relevant ability through job 
 
 Product hypothesis: an employer-approved, short fictional work scenario can give recruiters useful evidence without turning every application into a lengthy assessment. This hypothesis still needs validation with ZEIL and users.
 
-## Proposed core experience
+## Core experience
 
-1. An employer reviews and approves a scenario drafted from a job description.
+1. The applicant opens a fixed, reviewed customer-support scenario with a supplied refund policy. Employer generation and approval controls are an optional later addition.
 2. After applying, an applicant optionally responds to the scenario and one contextual follow-up.
 3. The applicant previews an evidence card before sharing it.
 4. A recruiter sees exact excerpts, the applicant's revision, and unresolved interview questions.
@@ -21,25 +21,68 @@ The first role family is customer support. The demo uses a fictional double-char
 
 Evidence cards describe observed responses; they do not rank candidates, infer personal traits, or make hiring decisions. The exercise is optional and does not block an application. It is not proof of identity or independent authorship.
 
-## Current implementation: 10:10 foundation checkpoint
+## Current implementation: 12:06 core checkpoint
 
-- Idea and rationale recorded in this README.
-- Server-side Gemini connectivity check implemented.
-- Private environment configuration excluded from Git.
-- Secret scan provided for staged/tracked files.
-- No product UI or ZEIL integration has been implemented yet.
+- JavaScript frontend with ZEIL reference styling, applicant and recruiter perspectives.
+- Actual server-side Gemini calls for one adaptive follow-up and structured evidence generation.
+- Four evidence criteria: communication, policy handling, ownership and adaptation.
+- JSON Schema validation and exact-quotation checks before model output is accepted.
+- Applicant preview, explicit sharing with the local recruiter view, withdrawal and revision.
+- Original answer and revised answer remain visible beside the evidence.
+- Recoverable provider and validation errors; the current form text is retained on failure.
+- Per-session request limit, bounded retries, private server-side key and restricted static-file serving.
 
-See [checkpoint evidence](docs/checkpoint-1010.md) for verified outcomes.
+The prototype uses fictional records. It has no live ZEIL API integration or actual employer delivery. Scenarios generated from a job description, durable shareable links, a second reviewer model and scored AI evaluation are not implemented yet.
 
-## Run the connection check
+Verification records: [initial connection](docs/checkpoint-1010.md) and [core workflow](docs/checkpoint-1206.md).
 
-Requires Node.js 22 or newer. No dependency installation is needed for this initial checkpoint.
+## Run locally
+
+Requires Node.js 22 or newer. The application uses built-in Node APIs and browser JavaScript; no dependency installation or build step is required.
 
 1. Copy `.env.example` to `.env` in this project folder.
 2. Set `GEMINI_API_KEY` privately in `.env`. Do not paste the key into chat, browser code, a shell profile or a coding assistant's configuration.
-3. Run `npm run check:gemini` from this directory.
+3. Run `npm start` from this directory.
+4. Open http://127.0.0.1:4173 in your browser.
+
+`npm run dev` enables server restart on code changes. A server restart clears demo sessions. Browser assets require a page reload after editing.
+
+## Verify Gemini and the core API
+
+- `npm run check:gemini`: make one real Gemini request and print a greeting.
+- `npm test`: run ten deterministic validation and HTTP integration tests with a fixture model; these do not call Gemini or consume quota.
+- With the application running, `npm run check:core`: run the complete HTTP workflow using two real Gemini requests and fictional answers. It verifies the follow-up, all four evidence criteria, exact quotations, approval, recruiter access and withdrawal.
+
+The ten engineering tests are not a claim for the "Prove it works" AI evaluation bonus. A scored set of model inputs and measured before/after improvement remains later work.
 
 The check makes a small request to Google's Gemini API and prints its greeting, never the key. It uses the event-recommended `gemini-flash-latest` alias. Shared-quota/server errors get at most two retries with backoff. The event key is for the product, not coding-agent usage.
+
+## Demo walkthrough
+
+1. Read the customer message and the four policy references.
+2. Enter an answer or select "Use a fictional sample response". The sample deliberately promises a same-day refund that the policy does not support.
+3. Continue to generate one follow-up grounded in the answer and a policy reference.
+4. Revise the answer and explain the change, then select "Preview my evidence card".
+5. Inspect the four observations, exact source excerpts, policy links and interview questions.
+6. Select "Share with recruiter preview". The recruiter view shows the same evidence plus both source answers.
+7. Return to the applicant view to withdraw sharing or revise the response.
+
+Sharing only changes access between perspectives within this local demo session; it does not send an application or contact an employer. Draft text is retained in the current page during failures, but unsent edits are lost on reload. Successfully processed answers are restored from the session while it remains active.
+
+## API boundary
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `GET /api/session` | Create or restore an isolated session and return the fixed scenario and processed state. |
+| `POST /api/followup` | Validate `answer`, call Gemini, validate the question and exact anchor quote, then retain the result. |
+| `POST /api/evidence` | Validate `revision`, call Gemini using server-held original answer and follow-up, then validate all four observations and quotes. |
+| `POST /api/share` | Approve the current evidence for the local recruiter preview. |
+| `GET /api/recruiter` | Return evidence only after applicant approval. |
+| `POST /api/unshare` | Withdraw approval. |
+| `POST /api/revise` | Withdraw approval and clear the previous evidence before editing. |
+| `POST /api/reset` | Clear this attempt while preserving the session's request limit. |
+
+POST endpoints accept JSON. Answers must contain 40–5,000 characters. Sessions expire after two hours, have a twelve-generation-request limit, and are stored only in memory. The server listens on loopback only; public hosting, real authentication and persistent storage are later integration work.
 
 Before each push, stage intended files and run `npm run check:secrets`. Confirm that `.env` remains ignored. The scan is a targeted guard for environment files and Google API keys, not a comprehensive secret detector.
 
@@ -95,7 +138,9 @@ Use a single application and server-side Gemini boundary. Keep calls sequential 
 
 ## Architecture and acknowledgements
 
-At this checkpoint, `src/gemini.mjs` is a Node-only API boundary using built-in `fetch`; `scripts/check-gemini.mjs` exercises it. The REST request follows the event quickstart. No third-party starter kit or previous project code was imported.
+`src/server.mjs` serves a whitelist of frontend assets and manages session state. `src/gemini.mjs` calls Gemini's REST API with structured output; `src/schemas.mjs` validates the JSON and source excerpts; `src/prompts.mjs` defines the two narrow model tasks. `public/app.js` implements the applicant and recruiter workflow. No frontend receives the key.
+
+The REST request follows the event quickstart and Google's [structured-output API](https://ai.google.dev/gemini-api/docs/generate-content/structured-output). No third-party starter kit or previous project code was imported. Existing ZEIL logo and font assets are used for the private prototype; sources are listed in [asset acknowledgements](public/assets/NOTICE.md).
 
 AI was used for planning and coding assistance.
 

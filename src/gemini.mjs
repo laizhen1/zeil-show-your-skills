@@ -6,7 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const envPath = fileURLToPath(new URL('../.env', import.meta.url));
 if (existsSync(envPath)) process.loadEnvFile(envPath);
 
-export async function generateText(prompt) {
+export async function generateText(prompt, { schema, system } = {}) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || key === 'replace_with_your_private_key') {
     throw new Error('Set GEMINI_API_KEY in the project .env file before running this check.');
@@ -20,8 +20,15 @@ export async function generateText(prompt) {
       response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        signal: AbortSignal.timeout(30_000),
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+          generationConfig: {
+            maxOutputTokens: 6000,
+            ...(schema ? { responseMimeType: 'application/json', responseJsonSchema: schema } : {}),
+          },
+        }),
+        signal: AbortSignal.timeout(45_000),
       });
     } catch {
       throw new Error('Gemini connection failed or timed out. Check network access and try again.');
@@ -44,5 +51,14 @@ export async function generateText(prompt) {
       .map(part => part.text).join('').trim();
     if (!text) throw new Error('Gemini returned no text. The check has not passed.');
     return { text, model: data.modelVersion || model };
+  }
+}
+
+export async function generateStructured(prompt, schema, system) {
+  const result = await generateText(prompt, { schema, system });
+  try {
+    return { data: JSON.parse(result.text), model: result.model };
+  } catch {
+    throw new Error('The AI returned an unreadable response. Your answer is preserved; please try again.');
   }
 }
