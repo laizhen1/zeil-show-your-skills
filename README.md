@@ -1,6 +1,6 @@
 # ZEIL Show Your Skills
 
-**Show Your Skills helps applicants demonstrate their reasoning through a short work scenario and gives recruiters evidence beyond the CV.**
+**ZEIL Show Your Skills helps job applicants demonstrate how they approach realistic work through short, role-specific scenarios, giving recruiters concrete evidence beyond the CV.**
 
 ZEIL Hackathon — 9 October 2026 · Pack 30 · Justin Lai
 
