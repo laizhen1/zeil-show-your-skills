@@ -21,7 +21,10 @@ export class MemorySessions {
 export class BlobSessions {
   async read(id) {
     if (!/^[a-f0-9]{48}$/.test(id || '')) return null;
-    const result = await get(`sessions/${id}.json`, { access: 'private', useCache: false });
+    // Use the stored representation's ETag, not a compressed HTTP variant's ETag.
+    const result = await get(`sessions/${id}.json`, {
+      access: 'private', useCache: false, headers: { 'Accept-Encoding': 'identity' },
+    });
     if (!result) return null;
     const data = await new Response(result.stream).json();
     if (Date.now() - data.created > sessionTtl) return null;
