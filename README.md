@@ -47,9 +47,51 @@ Before each push, stage intended files and run `npm run check:secrets`. Confirm 
 
 Proposed inputs: a ZEIL job record and an application identifier. Proposed outputs: an approved scenario linked to the job and an applicant-approved evidence card linked to the application. Use sample records until ZEIL provides its internal API contracts, authentication and permissions. This is an independent hackathon prototype, not an existing ZEIL integration.
 
-## Next checkpoint: scope locked
+## 10:36 checkpoint: scope locked
 
-Define the exact demo path and acceptance criteria before adding UI. Prioritise employer-approved scenario → response → one follow-up → evidence card. If time is tight, use one fixed approved scenario first. Reassess optional work when the 13:00 midpoint challenge is revealed.
+### Required demo feature
+
+An applicant completes a realistic customer-support scenario, responds to one adaptive follow-up, and produces an evidence card a recruiter can inspect.
+
+Start with one fixed, reviewed fictional double-charge scenario and a supplied refund policy. The applicant submits an initial answer, receives one contextual follow-up, submits a revision, and previews the resulting evidence. The recruiter view shows exact answer excerpts, the revision and unresolved interview questions. No accounts, external messaging, live ZEIL integration or general-purpose assessment platform are required for the demo.
+
+Acceptance criteria:
+
+- The full scenario-to-evidence workflow runs with actual Gemini responses.
+- The follow-up references the applicant's answer and the supplied scenario or policy.
+- Evidence excerpts are validated against the submitted text; unsupported excerpts are rejected.
+- Structured output is validated before rendering, with clear recovery for malformed output, network errors and quota errors.
+- The recruiter can inspect the original answer and revision; no automated hiring decision is produced.
+- The key remains on the server and no raw credential appears in application output.
+
+### Optional additions (maximum two)
+
+1. Employer scenario editor: generate a scenario from a job description, then edit and approve it.
+2. Shareable evidence card: save an applicant-approved card and open it through a recruiter-view link, using fictional demo data.
+
+Neither addition is required to complete the core demo. A local recruiter preview is sufficient for the required workflow; durable storage and link sharing are optional.
+
+### Selected bonus challenges
+
+| Priority | Challenge | Potential points | Required evidence |
+| --- | --- | ---: | --- |
+| Core | Built for hiring | 20 | Demonstrate the applicant and recruiter workflow and its practical benefit. |
+| Core | Strict shapes | 5 | JSON schema, validation and a demonstrated invalid-output path. |
+| Next | Prove it works | 10 | At least ten fixed test inputs, expected results, a scoring script and actual before/after results from one improvement. |
+| Stretch | Two brains | 15 | A separate reviewer model catches unsupported evidence; show the hand-off and measured benefit over the first pass. |
+
+The potential total is 50, subject to the bonus cap and judging. These are selected targets, not completed claims. A second model is retained only if it demonstrably improves evidence quality and fits the remaining time. Deterministic quote validation remains required even without that model.
+
+### Delivery cutoffs (9 October, Auckland time)
+
+- By 12:06: core workflow runs end to end locally and is pushed. If behind, defer both optional additions and finish the fixed-scenario path.
+- By 13:00: rehearse the demo start to finish; read the midpoint challenge and reassess bonus priorities without disrupting the core.
+- By 14:00: finish evaluation and decide whether the reviewer model is reliable enough to include. Drop it if benefit, latency or quota usage is unacceptable.
+- By 14:48: freeze features; only fixes, presentation polish and README updates remain. No optional addition starts unless core acceptance criteria already pass and sufficient verification time remains.
+- From 15:00: prepare and record the three-minute video with the participant on camera; reserve time to upload and check access.
+- By 15:42: submit, leaving a buffer before the 16:00 deadline.
+
+Use a single application and server-side Gemini boundary. Keep calls sequential and limited: one follow-up call, one evidence-generation call, and an optional review call. Use fixed fixtures to debug UI and validation without consuming shared model quota; final demo and evaluation evidence must clearly distinguish real calls from fixtures.
 
 ## Architecture and acknowledgements
 
