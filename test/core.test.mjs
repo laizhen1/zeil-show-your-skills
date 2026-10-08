@@ -163,6 +163,9 @@ test('unknown scenarios and stale-tab submissions are rejected before model call
   assert.equal((await call('/api/scenario', { scenarioId: 'untrusted-custom-scenario' })).status, 400);
   await call('/api/scenario', { scenarioId: engineeringScenario.id });
   assert.equal((await call('/api/followup', { scenarioId: scenario.id, answer: initial })).status, 409);
+  for (const path of ['/api/share', '/api/unshare', '/api/reset', '/api/revise']) {
+    assert.equal((await call(path, { scenarioId: scenario.id })).status, 409);
+  }
   assert.equal(calls, 0);
 });
 
@@ -174,4 +177,20 @@ test('switching scenarios does not reset the session generation limit', async t 
   await call('/api/scenario', { scenarioId: engineeringScenario.id });
   assert.equal((await call('/api/followup', { answer: engineeringScenario.sampleAnswer })).status, 429);
   assert.equal(calls, 12);
+});
+
+test('a scenario cannot change while Gemini is preparing a response', async t => {
+  let started;
+  let release;
+  const began = new Promise(resolve => { started = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  const { call } = await harness(t, async () => { started(); await gate; return { data: followup, model: 'test-fixture' }; });
+  await call('/api/session');
+  const pending = call('/api/followup', { answer: initial });
+  await began;
+  try {
+    assert.equal((await call('/api/scenario', { scenarioId: engineeringScenario.id })).status, 409);
+  } finally { release(); }
+  assert.equal((await pending).status, 200);
+  assert.equal((await call('/api/session')).data.scenario.id, scenario.id);
 });

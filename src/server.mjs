@@ -87,6 +87,7 @@ export function createApp({ generate = generateStructured, sessions = deployment
         await save();
         return send(200, { scenario: next });
       }
+      if (body.scenarioId !== undefined && body.scenarioId !== selectedScenario.id) throw bad(409, 'The scenario changed in another tab. Reload before continuing.');
       if (path === '/api/reset') {
         Object.assign(session, { initial: '', revision: '', followup: null, evidence: null, approved: false });
         await save();
@@ -101,7 +102,6 @@ export function createApp({ generate = generateStructured, sessions = deployment
       if (path === '/api/unshare') { session.approved = false; await save(); return send(200, { approved: false }); }
       if (path === '/api/revise') { session.approved = false; session.evidence = null; await save(); return send(200, { approved: false }); }
       if (!['/api/followup', '/api/evidence'].includes(path)) throw bad(404, 'Not found.');
-      if (body.scenarioId !== undefined && body.scenarioId !== selectedScenario.id) throw bad(409, 'The scenario changed in another tab. Reload before continuing.');
       if (session.calls >= 12) throw bad(429, 'This demo session has reached its AI request limit. Please return later.');
       if (path === '/api/followup' && session.followup) throw bad(409, 'A follow-up already exists. Start a new attempt to change the original answer.');
       if (path === '/api/evidence' && !session.followup) throw bad(409, 'Complete the first response before preparing evidence.');

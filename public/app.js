@@ -7,7 +7,7 @@ const errorHtml = () => state.error ? `<div class="error" role="alert"><p>${e(st
 const loadingHtml = message => state.busy ? `<div class="loading" role="status"><span class="spinner"></span><span>${e(message)} Your text stays here while we work.</span></div>` : '';
 
 async function request(path, body) {
-  const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const response = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: state.scenario?.id, ...body }) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'The request could not be completed. Please try again.');
   return data;
