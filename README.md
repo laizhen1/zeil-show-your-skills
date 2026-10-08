@@ -4,6 +4,8 @@
 
 ZEIL Hackathon — 9 October 2026 · Pack 30 · Justin Lai
 
+Live demo: https://zeil-show-your-skills.vercel.app/ — no installation or login required. Use fictional responses only. Both perspectives are available within one demo session after applicant approval.
+
 ## Why this idea
 
 Graduates and career changers can struggle to show relevant ability through job titles alone. Recruiters also need concrete examples to inform a useful interview. Today's hackathon lets candidates demonstrate their approach through actual work; this prototype explores bringing that principle into a lightweight, optional ZEIL application feature.
@@ -34,13 +36,13 @@ Evidence cards describe observed responses; they do not rank candidates, infer p
 
 The prototype uses fictional records. It has no live ZEIL API integration or actual employer delivery. Scenarios generated from a job description, durable shareable links, a second reviewer model and scored AI evaluation are not implemented yet.
 
-Verification records: [initial connection](docs/checkpoint-1010.md) and [core workflow](docs/checkpoint-1206.md).
+Verification records: [initial connection](docs/checkpoint-1010.md) [core workflow](docs/checkpoint-1206.md) and [public deployment](docs/deployment.md).
 
 ## Run locally
 
 Requires Node.js 22 or newer. The application uses built-in Node APIs and browser JavaScript; run npm install before starting. No frontend build step is required.
 
-1. Copy `.env.example` to `.env` in this project folder.
+1. Run `npm install`, then copy `.env.example` to `.env` in this project folder.
 2. Set `GEMINI_API_KEY` privately in `.env`. Do not paste the key into chat, browser code, a shell profile or a coding assistant's configuration.
 3. Run `npm start` from this directory.
 4. Open http://127.0.0.1:4173 in your browser.
@@ -126,10 +128,11 @@ Neither addition is required to complete the core demo. A local recruiter previe
 | --- | --- | ---: | --- |
 | Core | Built for hiring | 20 | Demonstrate the applicant and recruiter workflow and its practical benefit. |
 | Core | Strict shapes | 5 | JSON schema, validation and a demonstrated invalid-output path. |
+| Verified deployment | Ship it | 10 | Public demo without login; real Gemini workflow verified. See deployment evidence. |
 | Next | Prove it works | 10 | At least ten fixed test inputs, expected results, a scoring script and actual before/after results from one improvement. |
 | Stretch | Two brains | 15 | A separate reviewer model catches unsupported evidence; show the hand-off and measured benefit over the first pass. |
 
-The potential total is 50, subject to the bonus cap and judging. These are selected targets, not completed claims. A second model is retained only if it demonstrably improves evidence quality and fits the remaining time. Deterministic quote validation remains required even without that model.
+The potential total is 60, subject to the 50-point bonus cap and judging. These are selected targets, not completed claims. A second model is retained only if it demonstrably improves evidence quality and fits the remaining time. Deterministic quote validation remains required even without that model.
 
 ### Delivery cutoffs (9 October, Auckland time)
 
