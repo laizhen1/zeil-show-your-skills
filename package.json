@@ -1,0 +1,12 @@
+{
+  "name": "zeil-show-your-skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional work scenarios and evidence cards for ZEIL applications — hackathon integration prototype.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check:gemini": "node scripts/check-gemini.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs"
+  }
+}
