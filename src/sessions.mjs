@@ -1,4 +1,4 @@
-import { get, put } from '@vercel/blob';
+import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 
 export const sessionTtl = 2 * 60 * 60 * 1000;
 const conflict = () => Object.assign(new Error('This session changed in another request. Reload and try again.'), { status: 409 });
@@ -35,7 +35,7 @@ export class BlobSessions {
       });
       return result.etag;
     } catch (error) {
-      if (error.name === 'BlobPreconditionFailedError') throw conflict();
+      if (error instanceof BlobPreconditionFailedError) throw conflict();
       throw error;
     }
   }

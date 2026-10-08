@@ -121,6 +121,8 @@ export function createApp({ generate = generateStructured, sessions = deployment
       } finally { session.busy = false; await save(); }
       return send(200, payload);
     } catch (error) {
+      // Log only the error class and controlled status, never answers, tokens or provider bodies.
+      console.error('Request failed', { type: error.constructor.name, status: error.status || 500 });
       if (!res.headersSent) send(error.status || 500, { error: error.status ? error.message : 'Something went wrong. Please try again.' });
       else res.end();
     }
