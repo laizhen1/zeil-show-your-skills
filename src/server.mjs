@@ -12,7 +12,7 @@ import { voiceSchema, voiceInstruction, validVoiceIntent } from './voice.mjs';
 const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
-  ...['voice.js', 'voice-flow.js', 'voice-intents.js'].map(file => [`/${file}`, [file, 'text/javascript; charset=utf-8']]),
+  ...['voice.js', 'voice-flow.js', 'voice-intents.js', 'microphone.js'].map(file => [`/${file}`, [file, 'text/javascript; charset=utf-8']]),
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/assets/zeil-logo.png', ['assets/zeil-logo.png', 'image/png']],
   ['/assets/basel-book.otf', ['assets/basel-book.otf', 'font/otf']],

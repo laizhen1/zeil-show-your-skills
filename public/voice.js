@@ -1,15 +1,17 @@
 import { VoiceFlow } from './voice-flow.js';
 import { commandIntent } from './voice-intents.js';
+import { MicrophoneMonitor } from './microphone.js';
 
 export function initVoice(adapter) {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const root = document.createElement('aside');
   root.className = 'voice-guide';
   root.setAttribute('aria-label', 'Voice guide');
-  root.innerHTML = `<button class="voice-launcher" aria-expanded="false" aria-controls="voice-panel">Voice guide <span>Off</span></button>
+  root.innerHTML = `<button class="mic-indicator" aria-label="Microphone status: off. Open voice controls."><span class="mic-light" aria-hidden="true"></span><span class="mic-indicator-label">Microphone off</span><meter class="mic-level" min="0" max="100" value="0" aria-label="Microphone input level"></meter></button><button class="voice-launcher" aria-expanded="false" aria-controls="voice-panel">Voice guide <span>Off</span></button>
     <section id="voice-panel" class="voice-panel" hidden><header><div><strong>Your voice guide</strong><p id="voice-status" role="status">Microphone off</p></div><button class="voice-close" aria-label="Minimise voice guide">&minus;</button></header>
     <div class="voice-privacy">Enable voice, then say <strong>Hi Gemini</strong>. Chrome may send audio to its speech service, including while waiting for the wake phrase. Commands may be sent to Gemini. Use fictional information only.</div>
     <div class="voice-controls"><button class="button" id="voice-microphone" aria-pressed="false">Enable microphone</button><button class="button secondary" id="voice-stop">Stop speaking</button></div>
+    <div class="mic-test-controls"><button class="text-button" id="mic-test">Test microphone</button><p id="mic-test-result" role="status">Test input locally before starting voice. No audio is recorded or sent by this test.</p></div>
     <div id="voice-chat" class="voice-chat" role="log" aria-label="Guide conversation" aria-live="polite"></div>
     <div class="voice-thinking" role="status" hidden><span aria-hidden="true"><i></i><i></i><i></i></span>Thinking</div>
     <p id="voice-interim" class="voice-interim"></p>
@@ -39,6 +41,18 @@ export function initVoice(adapter) {
   const messages = [];
   let enabled = false, speaking = false, recognition = null, restarting = null, cooldown = 0, speechId = 0, settleSpeech = null;
   let suggestionKey = '';
+  let testing = false, requestingMic = false, heardSound = false, testTimer = null, micAttempt = 0;
+  const monitor = new MicrophoneMonitor({
+    onLevel: (level, active) => {
+      $('.mic-level').value = level;
+      $('.mic-indicator').classList.toggle('sound-active', active);
+      if (testing && active && !heardSound) {
+        heardSound = true;
+        $('#mic-test-result').textContent = 'Sound detected. Your microphone is receiving audio. This checks input level, not speech recognition.';
+      }
+    },
+    onEnded: () => off('Microphone disconnected. Reconnect it and run Test microphone again.'),
+  });
   const add = (role, text) => {
     messages.push({ role, text });
     if (messages.length > 16) messages.shift();
@@ -57,6 +71,13 @@ export function initVoice(adapter) {
     $('.voice-launcher span').textContent = !enabled ? 'Off' : speaking ? 'Speaking' : flow.dictating ? 'Dictating' : 'On';
     $('#voice-microphone').textContent = enabled ? 'Turn off microphone' : 'Enable microphone';
     $('#voice-microphone').setAttribute('aria-pressed', String(enabled));
+    $('#voice-microphone').disabled = requestingMic;
+    $('#mic-test').disabled = requestingMic || enabled;
+    $('#mic-test').textContent = testing ? 'Stop microphone test' : 'Test microphone';
+    const micStatus = requestingMic ? 'Allow microphone access' : testing ? 'Testing microphone' : !enabled ? 'Microphone off' : speaking ? 'Guide speaking' : flow.busy || adapter.state().busy ? 'Preparing response' : flow.awake ? 'Listening' : 'Waiting for Hi Gemini';
+    $('.mic-indicator-label').textContent = micStatus;
+    $('.mic-indicator').setAttribute('aria-label', `${micStatus}. Open voice controls.`);
+    $('.mic-indicator').classList.toggle('mic-on', enabled || testing);
     root.classList.toggle('voice-enabled', enabled);
     const working = !speaking && (flow.busy || adapter.state().busy);
     root.classList.toggle('voice-working', working);
@@ -85,6 +106,7 @@ export function initVoice(adapter) {
     speaking = false; cooldown = Date.now() + 600; update();
   };
   const off = (message = 'Microphone off. Click Enable microphone to use voice again.') => {
+    micAttempt++; requestingMic = false; testing = false; clearTimeout(testTimer); monitor.stop();
     enabled = false; clearTimeout(restarting); recognition?.abort(); recognition = null;
     stopSpeech(); flow.sleep(); $('#voice-interim').textContent = ''; add('guide', message); update();
   };
@@ -127,8 +149,31 @@ export function initVoice(adapter) {
     if (flow.awake || manual || /^(hi|hey|hello)\b/i.test(text)) add('user', text);
     await flow.hear(text, { manual }); update();
   };
-  const enable = () => {
+  const micError = error => error.name === 'NotAllowedError' ? 'Microphone access was denied. Allow it in Chrome site settings and try again.' : error.name === 'NotFoundError' ? 'No microphone was found. Connect one and try again.' : error.name === 'NotReadableError' ? 'The microphone is unavailable or in use by another application.' : 'Microphone access failed. Check your device and browser permissions.';
+  const testMicrophone = async () => {
+    if (testing) { testing = false; clearTimeout(testTimer); monitor.stop(); update(); return; }
+    const attempt = ++micAttempt;
+    requestingMic = true; heardSound = false; update();
+    try {
+      if (!await monitor.start() || attempt !== micAttempt) return;
+      testing = true;
+      $('#mic-test-result').textContent = 'Speak or tap near your microphone. The top-right light and meter should react. The test stops after 15 seconds.';
+      testTimer = setTimeout(() => {
+        testing = false; monitor.stop();
+        $('#mic-test-result').textContent = heardSound ? 'Test complete: sound detected. Select Enable microphone to start the voice guide.' : 'No sound detected. Check your mute switch, input volume and Chrome microphone selection, then test again.';
+        update();
+      }, 15000);
+    } catch (error) { if (attempt === micAttempt) $('#mic-test-result').textContent = micError(error); }
+    finally { if (attempt === micAttempt) { requestingMic = false; update(); } }
+  };
+  const enable = async () => {
     if (!Recognition || !window.speechSynthesis) { add('guide', 'Voice requires a supported desktop Chrome browser. You can still use the typed commands and normal controls.'); return; }
+    const attempt = ++micAttempt;
+    testing = false; clearTimeout(testTimer); requestingMic = true; update();
+    try {
+      if (!await monitor.start() || attempt !== micAttempt) return;
+    } catch (error) { if (attempt === micAttempt) add('guide', micError(error)); return; }
+    finally { if (attempt === micAttempt) { requestingMic = false; update(); } }
     enabled = true; flow.sleep();
     const engine = new Recognition(); recognition = engine;
     engine.lang = 'en-NZ'; engine.continuous = true; engine.interimResults = true;
@@ -164,6 +209,8 @@ export function initVoice(adapter) {
   $('.voice-launcher').onclick = () => { $('#voice-panel').hidden ? open() : minimise(); };
   const minimise = () => { $('#voice-panel').hidden = true; $('.voice-launcher').setAttribute('aria-expanded', 'false'); };
   $('.voice-close').onclick = minimise;
+  $('.mic-indicator').onclick = open;
+  $('#mic-test').onclick = testMicrophone;
   $('#voice-microphone').onclick = () => enabled ? off() : enable();
   $('#voice-stop').onclick = stopSpeech;
   $('#voice-command').onsubmit = event => {
@@ -171,8 +218,8 @@ export function initVoice(adapter) {
     if (!text || flow.busy || adapter.state().busy) return;
     input.value = ''; stopSpeech(); void handle(text, true);
   };
-  document.addEventListener('visibilitychange', () => { if (document.hidden && enabled) off('Microphone turned off because this tab is no longer active.'); });
-  window.addEventListener('pagehide', () => { if (enabled) off(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && (enabled || testing || requestingMic)) off('Microphone turned off because this tab is no longer active.'); });
+  window.addEventListener('pagehide', () => { if (enabled || testing || requestingMic) off(); });
   add('guide', 'I can guide you from choosing a scenario to reviewing your evidence. Enable the microphone and say Hi Gemini, or type a command below.');
   update();
   return { open, update };

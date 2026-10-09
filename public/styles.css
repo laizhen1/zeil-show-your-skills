@@ -53,3 +53,9 @@
 @keyframes voice-glow{50%{box-shadow:0 0 0 6px #8054ff15,0 5px 26px #8054ff40}}
 @media(max-width:640px){.voice-guide{right:16px;bottom:14px}.voice-panel{max-height:calc(100dvh - 95px)}}
 @media(prefers-reduced-motion:reduce){.voice-working .voice-launcher,.voice-thinking i{animation:none}.voice-chat{scroll-behavior:auto}}
+
+.mic-indicator{position:fixed;top:8px;right:38px;z-index:45;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 120px);padding:9px 12px;border:1px solid #e2dae9;border-radius:24px;background:#fff;box-shadow:0 3px 14px #49326012;color:#746c7c;font:inherit;font-size:11px;cursor:pointer}
+.mic-light{width:9px;height:9px;flex:none;border-radius:50%;background:#bbb6c2}.mic-on .mic-light{background:#bba1f2}.sound-active .mic-light{background:#8054ff;box-shadow:0 0 0 5px #8054ff20,0 0 12px #8054ff80}.mic-on{border-color:#c9b7ef;color:#6940b6}
+.mic-level{width:48px;height:12px;accent-color:#8054ff}.mic-level::-webkit-meter-bar{background:#eee8f7;border:0}.mic-level::-webkit-meter-optimum-value{background:#8054ff}
+.mic-test-controls{padding:0 16px 6px}.mic-test-controls button{font-size:11px}.mic-test-controls p{font-size:10px;color:#776987;line-height:1.5;margin:6px 0}
+@media(max-width:640px){.mic-indicator{right:16px;max-width:calc(100vw - 100px)}}
