@@ -205,16 +205,15 @@ Neither addition is required to complete the core demo. A local recruiter previe
 | Core | Built for hiring | 20 | Demonstrate the applicant and recruiter workflow and its practical benefit. |
 | Core | Strict shapes | 5 | JSON schema, validation and a demonstrated invalid-output path. |
 | Verified deployment | Ship it | 10 | Public demo without login; real Gemini workflow verified. See deployment evidence. |
-| Next | Prove it works | 10 | At least ten fixed test inputs, expected results, a scoring script and actual before/after results from one improvement. |
-| Stretch | Two brains | 15 | A separate reviewer model catches unsupported evidence; show the hand-off and measured benefit over the first pass. |
+| Midpoint priority | No hands | 25 | A complete voice-controlled exercise in an uncut demo, with hands visible and off keyboard, mouse and trackpad. Microphone rehearsal and recorded evidence are required. |
 
-The potential total is 60, subject to the 50-point bonus cap and judging. These are selected targets, not completed claims. A second model is retained only if it demonstrably improves evidence quality and fits the remaining time. Deterministic quote validation remains required even without that model.
+The potential total is 60, subject to the 50-point bonus cap and judging. These are selected targets, not completed claims. The voice guide is implemented, but No hands is only demonstrated by a successful complete microphone rehearsal and the required video. Automated controller tests alone do not prove it. Deterministic quote validation remains required.
 
 ### Delivery cutoffs (9 October, Auckland time)
 
 - By 12:06: core workflow runs end to end locally and is pushed. If behind, defer both optional additions and finish the fixed-scenario path.
 - By 13:00: rehearse the demo start to finish; read the midpoint challenge and reassess bonus priorities without disrupting the core.
-- By 14:00: finish evaluation and decide whether the reviewer model is reliable enough to include. Drop it if benefit, latency or quota usage is unacceptable.
+- By 14:00: rehearse the complete microphone flow, verify model responses and confirm which bonus challenges can be demonstrated reliably.
 - By 14:48: freeze features; only fixes, presentation polish and README updates remain. No optional addition starts unless core acceptance criteria already pass and sufficient verification time remains.
 - From 15:00: prepare and record the three-minute video with the participant on camera; reserve time to upload and check access.
 - By 15:42: submit, leaving a buffer before the 16:00 deadline.
@@ -230,3 +229,36 @@ The REST request follows the event quickstart and Google's [structured-output AP
 AI was used for planning and coding assistance.
 
 Keep the repository private and share it with the organiser identified in the event instructions. The final submission requires a video of at most three minutes with the participant on camera, repository access, bonus evidence and pack number 30 before 16:00 NZ time.
+
+## Voice guide and hands-free walkthrough
+
+Open **Voice guide** at the bottom-right of the page. The compact chat panel shows the conversation, microphone state and a purple processing indicator. It remains available across scenario and evidence screens. Motion is disabled when the browser requests reduced motion.
+
+### Setup
+
+Use desktop Chrome with a microphone and audio output. Select **Enable microphone** and allow Chrome's microphone permission. Keep the website tab active. The microphone starts off, is never enabled automatically on reload, and turns off when the tab becomes hidden. Headphones can improve recognition in a noisy room.
+
+Chrome's speech recognition may send audio to its speech service, including while waiting for the wake phrase. The application does not store raw audio. Dictated answers use the same private session and submission flow as typed answers. Common commands are matched in the browser; unfamiliar commands are sent as text to Gemini with a fixed instruction and a strict action schema. The guide asks for confirmation before executing an interpreted command. Each session permits eight such interpretation requests, separately from the twelve core generation requests. Listed commands continue to work without those interpretation requests.
+
+This implementation uses browser speech recognition and synthesis, not Gemini Live or Gemini audio input. It targets the **No hands** challenge; it does not claim the **Live** or **Eyes and ears** bonuses. Actual microphone recognition depends on Chrome, device permission, network access and the environment.
+
+### Recorded exercise
+
+After microphone setup, keep hands visible and off the keyboard, mouse and trackpad throughout the complete exercise. Wait for **Listening** before speaking. Readbacks can be interrupted with **Stop speaking**; the corresponding button is also available outside a hands-free demonstration.
+
+1. Say **Hi Gemini**. The guide wakes and offers to start or review a work sample.
+2. Say **I want to write a response**, then **Software engineering** (or **Customer support**).
+3. Say **Read the scenario** or **Read the reference** if needed.
+4. Say **Use the sample response**, or **Record my answer** and dictate an original answer. End dictation with **Finish my answer**. The sample deliberately contains a reference conflict and is labelled fictional.
+5. Say **Read my answer** to check the draft, then **Continue**. Gemini generates the follow-up and the guide reads it aloud.
+6. Say **Record my answer**, then **Yes, confirm** to replace the copied original draft. Dictate a revision in your own words and finish with **Finish my answer**. Alternatively, **Add to my answer** appends dictated text. The guide never writes an improved answer on your behalf.
+7. Say **Read my answer** to review the revision, then **Submit my revision**. Gemini generates the evidence card.
+8. Say **Explain my evidence**. The guide reads the observations and supporting excerpts already displayed on the page.
+9. Say **Share my evidence**, then **Yes, share it**. Sharing requires explicit confirmation and opens the recruiter preview. **Open recruiter view** also opens it once approved.
+10. Say **Turn off microphone** when finished.
+
+**Go to sleep** waits for **Hi Gemini** again but keeps the microphone listening. **Turn off microphone** fully stops recognition and requires the button to re-enable it. **Cancel** dismisses a pending confirmation. Confirmations expire after 30 seconds and become invalid if the draft or page changes. Scenario changes, draft replacement and restarting ask before discarding work. Spoken words during dictation are answer text, not navigation commands, apart from the explicit stop, sleep, microphone-off and finish controls.
+
+The **Or type a command** field follows the same controller and provides a fallback for unsupported browsers and a way to inspect the workflow without microphone access. It is not evidence of completing the hands-free challenge.
+
+Implementation: `public/voice.js` manages the panel, microphone and spoken playback; `public/voice-flow.js` manages the guided state transitions; `public/voice-intents.js` defines supported commands; `src/voice.mjs` constrains optional Gemini interpretation. The server applies the existing session, origin, concurrency and scenario checks. Typed and voice actions share the same application functions.

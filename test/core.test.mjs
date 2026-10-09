@@ -13,6 +13,35 @@ const evidence = () => ({
 });
 const fixtureGenerator = async (prompt, schema) => ({ data: schema.properties.question ? followup : evidence(), model: 'test-fixture' });
 
+test('voice interpretation is constrained, bounded and does not mutate the application', async t => {
+  let calls = 0;
+  const { call } = await harness(t, async (prompt, schema, instruction) => {
+    calls++;
+    assert.deepEqual(JSON.parse(prompt), { command: 'Help me choose the technical scenario' });
+    assert.ok(schema.properties.action.enum.includes('engineering'));
+    assert.match(instruction, /Never write or improve an applicant answer/);
+    return { data: { action: 'engineering' }, model: 'test-fixture' };
+  });
+  await call('/api/session');
+  assert.equal((await call('/api/voice', { command: 'x'.repeat(601) })).status, 400);
+  for (let i = 0; i < 8; i++) assert.equal((await call('/api/voice', { command: 'Help me choose the technical scenario' })).data.action, 'engineering');
+  assert.equal((await call('/api/voice', { command: 'Help me choose the technical scenario' })).status, 429);
+  assert.equal(calls, 8);
+  const session = (await call('/api/session')).data;
+  assert.equal(session.scenario.id, scenario.id);
+  assert.equal(session.state.initial, '');
+  assert.equal(session.state.approved, false);
+});
+
+test('malformed voice output fails closed without exposing provider details', async t => {
+  const { call } = await harness(t, async () => ({ data: { action: 'share', script: 'untrusted content' } }));
+  await call('/api/session');
+  const result = await call('/api/voice', { command: 'interpret this' });
+  assert.equal(result.status, 502);
+  assert.doesNotMatch(JSON.stringify(result.data), /untrusted content/);
+  assert.equal((await call('/api/session')).data.state.approved, false);
+});
+
 async function harness(t, generate = fixtureGenerator) {
   const app = createApp({ generate });
   await new Promise(resolve => app.listen(0, '127.0.0.1', resolve));

@@ -1,4 +1,7 @@
+import { initVoice } from './voice.js';
+
 const app = document.querySelector('#app');
+let voice;
 const state = { scenario: null, scenarios: [], initial: '', revision: '', followup: null, evidence: null, approved: false, view: 'applicant', busy: false, error: '', model: '', sampleUsed: false };
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const e = escapeHtml;
@@ -74,6 +77,7 @@ function render(focus = false) {
     app.querySelectorAll('.workspace, .evidence-top, .review-layout').forEach(panel => panel.classList.add('panel-enter'));
   }
   renderedScreen = screen;
+  voice?.update();
   if (focus) document.querySelector('.screen-title')?.focus({ preventScroll: true });
 }
 
@@ -104,28 +108,33 @@ app.addEventListener('submit', event => { if (event.target.id === 'response-form
 app.addEventListener('click', async event => {
   const button = event.target.closest('[data-action]');
   if (!button || state.busy) return;
-  const action = button.dataset.action;
+  await performAction(button.dataset.action, { scenarioId: button.dataset.scenario });
+});
+
+async function performAction(action, { scenarioId, confirmed = false } = {}) {
+  if (state.busy) throw new Error('A response is already being prepared.');
   state.error = '';
   try {
+    if (['recruiter', 'unshare', 'revise', 'reset'].includes(action)) { state.busy = true; render(); }
     if (action === 'scenario') {
-      if (button.dataset.scenario === state.scenario.id) return;
-      if ((state.initial || state.revision || state.evidence) && !window.confirm('Change scenario? This will discard the current answers and evidence card and withdraw sharing.')) return;
+      if (scenarioId === state.scenario.id) return;
+      if (!confirmed && (state.initial || state.revision || state.evidence) && !window.confirm('Change scenario? This will discard the current answers and evidence card and withdraw sharing.')) return;
       state.busy = true; render();
-      const result = await request('/api/scenario', { scenarioId: button.dataset.scenario });
+      const result = await request('/api/scenario', { scenarioId });
       Object.assign(state, { scenario: result.scenario, initial: '', revision: '', followup: null, evidence: null, approved: false, model: '', sampleUsed: false, view: 'applicant' });
     }
     if (action === 'own') {
-      if (state.initial && !window.confirm('Clear this draft and write your own response?')) return;
+      if (!confirmed && state.initial && !window.confirm('Clear this draft and write your own response?')) return;
       state.initial = ''; state.sampleUsed = false;
     }
-    if (action === 'sample') { state.initial = state.scenario.sampleAnswer; state.sampleUsed = true; }
+    if (action === 'sample' && !state.followup) { state.initial = state.scenario.sampleAnswer; state.sampleUsed = true; }
     if (action === 'applicant') state.view = 'applicant';
     if (action === 'recruiter') { const result = await request('/api/recruiter'); Object.assign(state, result); state.view = 'recruiter'; }
     if (action === 'share') { state.busy = true; render(); await request('/api/share', {}); state.approved = true; state.view = 'recruiter'; }
     if (action === 'unshare') { await request('/api/unshare', {}); state.approved = false; }
     if (action === 'revise') { await request('/api/revise', {}); state.approved = false; state.evidence = null; state.view = 'applicant'; }
     if (action === 'reset') {
-      if (!window.confirm('Start a new attempt? This will discard the current answers and evidence card.')) return;
+      if (!confirmed && !window.confirm('Start a new attempt? This will discard the current answers and evidence card.')) return;
       await request('/api/reset', {});
       Object.assign(state, { initial: '', revision: '', followup: null, evidence: null, approved: false, sampleUsed: false });
     }
@@ -136,7 +145,7 @@ app.addEventListener('click', async event => {
     if (['applicant', 'recruiter', 'share', 'revise', 'reset', 'scenario'].includes(action)) window.scrollTo({ top: 0, behavior: 'instant' });
     if (action === 'own') document.querySelector('#answer')?.focus();
   }
-});
+}
 
 async function initialise() {
   try {
@@ -145,6 +154,25 @@ async function initialise() {
     state.scenarios = data.scenarios;
     Object.assign(state, data.state);
     render();
+    voice ||= initVoice({
+      state: () => state,
+      focus: () => document.querySelector('#answer')?.focus(),
+      draft: text => {
+        if (state.busy || state.evidence || text.length > 5000) return;
+        state[state.followup ? 'revision' : 'initial'] = text;
+        state.sampleUsed = false;
+        const field = document.querySelector('#answer');
+        if (field) field.value = text;
+        const count = document.querySelector('#char-count');
+        if (count) count.textContent = `${text.length.toLocaleString()} / 5,000`;
+      },
+      interpret: async command => (await request('/api/voice', { command })).action,
+      action: async (action, original) => {
+        if (action === 'submit') return submit();
+        const scenarioId = action === 'scenario' ? state.scenarios.find(s => original === 'engineering' ? s.id.includes('software-engineering') : s.id.includes('customer-support'))?.id : undefined;
+        return performAction(action, { scenarioId, confirmed: true });
+      },
+    });
   } catch {
     app.innerHTML = '<main class="boot"><h1>Let’s reconnect.</h1><p>The application could not restore your session. Please try again.</p><button class="button" id="reload">Try again</button></main>';
     document.querySelector('#reload').addEventListener('click', initialise);

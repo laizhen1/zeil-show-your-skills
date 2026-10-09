@@ -7,10 +7,12 @@ import { scenario, getScenario, scenarioOptions } from './scenario.mjs';
 import { followupSchema, evidenceSchema, validateFollowup, validateEvidence } from './schemas.mjs';
 import { systemInstruction, followupPrompt, evidencePrompt } from './prompts.mjs';
 import { deploymentSessions } from './sessions.mjs';
+import { voiceSchema, voiceInstruction, validVoiceIntent } from './voice.mjs';
 
 const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ...['voice.js', 'voice-flow.js', 'voice-intents.js'].map(file => [`/${file}`, [file, 'text/javascript; charset=utf-8']]),
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/assets/zeil-logo.png', ['assets/zeil-logo.png', 'image/png']],
   ['/assets/basel-book.otf', ['assets/basel-book.otf', 'font/otf']],
@@ -88,6 +90,22 @@ export function createApp({ generate = generateStructured, sessions = deployment
         return send(200, { scenario: next });
       }
       if (body.scenarioId !== undefined && body.scenarioId !== selectedScenario.id) throw bad(409, 'The scenario changed in another tab. Reload before continuing.');
+      if (path === '/api/voice') {
+        if (typeof body.command !== 'string' || !body.command.trim() || body.command.length > 600) throw bad(400, 'Use a short voice command of up to 600 characters.');
+        if ((session.voiceCalls || 0) >= 8) throw bad(429, 'Voice interpretation limit reached. Use the listed commands; they do not need an extra AI call.');
+        session.voiceCalls = (session.voiceCalls || 0) + 1;
+        session.busy = Date.now();
+        await save();
+        let action;
+        try {
+          const result = await generate(JSON.stringify({ command: body.command }), voiceSchema, voiceInstruction);
+          if (!validVoiceIntent(result.data)) throw bad(502, 'The voice command could not be interpreted. Use one of the listed commands.');
+          action = result.data.action;
+        } catch {
+          throw bad(502, 'Voice interpretation is unavailable. Use one of the listed commands; your work is preserved.');
+        } finally { session.busy = false; await save(); }
+        return send(200, { action });
+      }
       if (path === '/api/reset') {
         Object.assign(session, { initial: '', revision: '', followup: null, evidence: null, approved: false });
         await save();
