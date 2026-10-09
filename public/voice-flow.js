@@ -1,4 +1,4 @@
-import { commandIntent, dictatedPart, normalise, wakeCommand } from './voice-intents.js';
+import { commandIntent, confirmationIntent, dictatedPart, wakeCommand } from './voice-intents.js';
 
 export class VoiceFlow {
   constructor(adapter) {
@@ -42,9 +42,12 @@ export class VoiceFlow {
     finally { this.presentingReply = false; }
   }
   sleep() { this.epoch++; this.awake = false; this.dictating = false; this.pending = null; this.app.update(); }
-  ask(action, message, confirmed = true) {
-    this.pending = { action, confirmed, snapshot: this.snapshot(), expires: Date.now() + 30000 };
-    return this.say(`${message} Say "yes, confirm" or "cancel".`);
+  async ask(action, message, confirmed = true) {
+    const pending = { action, confirmed, message, snapshot: this.snapshot(), expires: Infinity };
+    this.pending = pending;
+    await this.say(`${message} Say yes, confirm, go ahead, or cancel.`);
+    // Give the user a full response window after spoken playback finishes.
+    if (this.pending === pending) pending.expires = Date.now() + 60000;
   }
   async hear(raw, { manual = false } = {}) {
     let text = String(raw).trim();
@@ -83,13 +86,20 @@ export class VoiceFlow {
     if (!text) return this.say('Hi. I can guide your work sample. Say I want to write a response, or review my evidence.');
     if (this.pending) {
       const pending = this.pending;
-      this.pending = null;
-      if (['cancel', 'no', 'no cancel'].includes(normalise(text))) return this.say('Cancelled. Nothing was changed.');
-      if (!['yes confirm', 'yes share it', 'yes replace it', 'yes continue'].includes(normalise(text))) return this.say('Nothing was changed. Please repeat the action you want.');
-      if (pending.expires < Date.now() || pending.snapshot !== this.snapshot()) return this.say('The confirmation expired or the page changed. Please request the action again.');
-      return this.run(pending.action, pending.confirmed);
+      const answer = confirmationIntent(text, pending.action);
+      if (answer === 'cancel') { this.pending = null; return this.say('Cancelled. Nothing was changed.'); }
+      if (pending.expires < Date.now() || pending.snapshot !== this.snapshot()) {
+        this.pending = null;
+        return this.say('The confirmation expired or the page changed. Please request the action again.');
+      }
+      if (answer === 'confirm') {
+        this.pending = null;
+        return this.run(pending.action, pending.confirmed);
+      }
+      // Background speech and transcription mistakes must not discard consent context.
+      return this.say(`I am still waiting to confirm: ${pending.message} Say yes or go ahead to confirm, or no to cancel.`);
     }
-    if (['yes confirm', 'yes share it', 'yes replace it', 'yes continue', 'cancel'].includes(normalise(text))) return this.say('There is no action waiting for confirmation.');
+    if (confirmationIntent(text) !== 'unknown') return this.say('There is no action waiting for confirmation.');
     if (command !== 'unknown') return this.run(command);
     this.busy = true; this.app.update();
     const epoch = this.epoch;

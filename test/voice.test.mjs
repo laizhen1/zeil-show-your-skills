@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoiceFlow } from '../public/voice-flow.js';
-import { commandIntent, wakeCommand } from '../public/voice-intents.js';
+import { commandIntent, confirmationIntent, wakeCommand } from '../public/voice-intents.js';
 import { scenario, engineeringScenario } from '../src/scenario.mjs';
 
 function harness(interpret = async () => 'unknown') {
@@ -91,7 +91,7 @@ test('draft replacement requires confirmation and stale or expired confirmation 
 
 test('model interpretation never directly submits or changes state', async () => {
   const h = harness(async () => 'sample');
-  await h.flow.hear('Hi Gemini'); await h.flow.hear('Can you load an example for me');
+  await h.flow.hear('Hi Gemini'); await h.flow.hear('Give me something fictional to begin with');
   assert.equal(h.state.initial, '');
   assert.equal(h.flow.pending.action, 'sample');
   await h.flow.hear('yes confirm');
@@ -102,7 +102,7 @@ test('microphone off invalidates an in-flight interpretation and clears confirma
   let resolve;
   const h = harness(() => new Promise(r => { resolve = r; }));
   await h.flow.hear('Hi Gemini');
-  const pending = h.flow.hear('please choose an example for me');
+  const pending = h.flow.hear('Give me something fictional to begin with');
   await h.flow.hear('turn off microphone');
   resolve('sample'); await pending;
   assert.equal(h.flow.pending, null);
@@ -113,7 +113,7 @@ test('microphone off invalidates an in-flight interpretation and clears confirma
 test('interpreted destructive actions still explain their consequences before confirmation', async () => {
   const h = harness(async () => 'sample');
   h.state.initial = 'An existing personal draft';
-  await h.flow.hear('Hi Gemini'); await h.flow.hear('load an example for me');
+  await h.flow.hear('Hi Gemini'); await h.flow.hear('Give me something fictional to begin with');
   await h.flow.hear('yes confirm');
   assert.equal(h.state.initial, 'An existing personal draft');
   assert.match(h.replies.at(-1), /Replace the current draft/);
@@ -154,4 +154,70 @@ test('next-step suggestions are available during a ready reply but not a process
   const processing = h.flow.say('Preparing your follow-up.', { ready: false });
   assert.deepEqual(h.flow.suggestions().commands, []);
   finish(); await processing;
+});
+
+test('natural phrasing covers every navigation action without substring matching', () => {
+  const examples = {
+    start: 'Could you please start a response for me?',
+    support: 'Select the customer support example', engineering: 'Pick the engineering scenario',
+    sample: 'Can you load an example answer for me please?', type: 'Let me type',
+    record: 'I would like to dictate my revision', append: 'Add more to my response',
+    read_scenario: 'Tell me the task', read_reference: 'Read out the runbook',
+    read_answer: 'Read back my revision', read_followup: 'Repeat the follow up',
+    submit: 'Please save my response', evidence: 'Show me my results',
+    share: 'Could you share my evidence with the recruiter please?',
+    recruiter: 'Show me the recruiter preview', applicant: 'Switch to the candidate view',
+    revise: 'Update my response', reset: 'Start over', withdraw: 'Stop sharing my evidence',
+    repeat: 'Say that again', help: 'Show me the commands', sleep: 'Wait for me',
+    off: 'Switch off my mic', stop: 'Stop talking',
+  };
+  for (const [action, phrase] of Object.entries(examples)) assert.equal(commandIntent(phrase), action, phrase);
+  for (const phrase of ['Do not share my evidence', 'Do not submit my response', 'I said share my evidence', 'Share my evidence or reset', 'If I say start over', 'Maybe share my evidence']) assert.equal(commandIntent(phrase), 'unknown', phrase);
+});
+
+test('sharing survives an unrecognised reply and accepts confirmations by voice and text', async () => {
+  for (const manual of [false, true]) {
+    for (const answer of ['Yes, confirm', 'yes', 'Yes please', 'Yeah, go ahead', 'I confirm', 'Sure, share it', 'Yes, share my evidence', 'Please confirm']) {
+      const h = harness();
+      for (const phrase of ['Hi Gemini', 'Pick the engineering scenario', 'Load an example answer', 'Next step', 'Save my revision', 'Please share my evidence with the recruiter']) await h.flow.hear(phrase, { manual });
+      assert.ok(h.flow.pending, answer);
+      await h.flow.hear('background chatter', { manual });
+      assert.ok(h.flow.pending, answer);
+      assert.equal(h.state.approved, false);
+      await h.flow.hear(answer, { manual });
+      assert.equal(h.state.approved, true, answer);
+      assert.equal(h.state.view, 'recruiter');
+      assert.equal(h.actions.filter(a => a === 'share').length, 1);
+      assert.equal(h.interpretations, 0);
+    }
+  }
+});
+
+test('uncertain, negated and unrelated replies never authorise a pending share', async () => {
+  for (const answer of ['not yet', 'do not share my evidence', 'yes but not now', 'someone said yes', 'yes replace it', 'maybe', 'yes and reset everything']) {
+    const h = harness(); h.state.evidence = { observations: [] };
+    await h.flow.hear('share my evidence', { manual: true });
+    await h.flow.hear(answer, { manual: true });
+    assert.equal(h.state.approved, false, answer);
+    assert.ok(h.flow.pending);
+    await h.flow.hear('No thanks', { manual: true });
+    assert.equal(h.flow.pending, null);
+    assert.equal(h.state.approved, false);
+  }
+  assert.equal(confirmationIntent('yes share it', 'reset'), 'unknown');
+});
+
+test('confirmation response window starts after playback and still rejects stale state', async () => {
+  const h = harness(); h.state.evidence = { observations: [] };
+  let finish;
+  h.flow.app.say = () => new Promise(resolve => { finish = resolve; });
+  const request = h.flow.hear('Share my evidence', { manual: true });
+  assert.equal(h.flow.pending.expires, Infinity);
+  const before = Date.now(); finish(); await request;
+  assert.ok(h.flow.pending.expires >= before + 60000);
+  h.flow.app.say = async text => h.replies.push(text);
+  h.state.revision = 'Changed after sharing was requested';
+  await h.flow.hear('Go ahead', { manual: true });
+  assert.equal(h.state.approved, false);
+  assert.equal(h.flow.pending, null);
 });

@@ -24,7 +24,7 @@ export function initVoice(adapter) {
     <p id="voice-interim" class="voice-interim"></p>
     <div class="voice-suggestions" aria-label="Suggested next commands"><p class="voice-suggestion-label">Suggested to ask next</p><p class="voice-suggestion-hint" aria-live="polite"></p><div class="voice-suggestion-options"></div><p class="voice-suggestion-tip">Say a suggestion, or click it to fill the message box.</p></div>
     <details class="voice-help"><summary>What can I say?</summary>
-      <p>After enabling the microphone, follow this sequence. Wait for the guide to finish speaking before each command.</p>
+      <p>After enabling the microphone, follow this sequence. These are examples: natural variations such as “Pick the engineering scenario” also work. Wait for the guide to finish speaking before each command.</p>
       <ol>
         <li><strong>Wake the guide:</strong> “Hi Gemini”.</li>
         <li><strong>Start:</strong> “I want to write a response”.</li>
@@ -35,7 +35,7 @@ export function initVoice(adapter) {
         <li><strong>Revise:</strong> “Record my answer”, then “Yes, confirm” to replace the draft. Speak your revision, then “Finish my answer”. Use “Add to my answer” instead to keep and extend the draft.</li>
         <li><strong>Create evidence:</strong> “Read my answer”, then “Submit my revision”.</li>
         <li><strong>Review:</strong> “Explain my evidence”.</li>
-        <li><strong>Share when ready:</strong> “Share my evidence”, then “Yes, share it”.</li>
+        <li><strong>Share when ready:</strong> “Share my evidence”, then “Yes”, “Yes, confirm”, or “Go ahead”.</li>
         <li><strong>View as a recruiter:</strong> “Open recruiter view”.</li>
         <li><strong>Finish:</strong> “Turn off microphone”.</li>
       </ol>
