@@ -207,7 +207,9 @@ Neither addition is required to complete the core demo. A local recruiter previe
 | Verified deployment | Ship it | 10 | Public demo without login; real Gemini workflow verified. See deployment evidence. |
 | Midpoint priority | No hands | 25 | A complete voice-controlled exercise in an uncut demo, with hands visible and off keyboard, mouse and trackpad. Microphone rehearsal and recorded evidence are required. |
 
-The potential total is 60, subject to the 50-point bonus cap and judging. These are selected targets, not completed claims. The voice guide is implemented, but No hands is only demonstrated by a successful complete microphone rehearsal and the required video. Automated controller tests alone do not prove it. Deterministic quote validation remains required.
+The submission claims Built for hiring, Strict shapes, Ship it and the midpoint No hands challenge. Their potential total is 60, subject to the 50-point bonus cap and judging. The [submitted demo video](https://drive.google.com/file/d/1NTwNo-IEV8djZURzKV0HB42Xkax1cPxS/view) provides the recorded workflow evidence; automated controller tests do not establish hands-free completion.
+
+For Strict shapes, see `src/schemas.mjs`, `src/gemini.mjs` and the invalid-output and fabricated-quotation cases in `test/core.test.mjs`. For No hands, see the recorded demonstration and `public/voice.js`, `public/voice-flow.js` and `public/voice-intents.js`. The voice guide uses browser speech recognition and synthesis; it does not claim Gemini Live or audio-input bonuses. The recorded sample workflow keeps the fictional engineering response unchanged to avoid long dictation in a noisy room; it demonstrates navigation and evidence generation, not an improved answer. Applicants can separately type or dictate their own revision.
 
 ### Delivery cutoffs (9 October, Auckland time)
 
