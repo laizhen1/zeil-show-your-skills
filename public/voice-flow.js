@@ -7,6 +7,7 @@ export class VoiceFlow {
     this.dictating = false;
     this.pending = null;
     this.busy = false;
+    this.presentingReply = false;
     this.lastReply = '';
     this.lastAction = '';
     this.epoch = 0;
@@ -17,7 +18,7 @@ export class VoiceFlow {
   }
   suggestions() {
     const s = this.app.state();
-    if (this.busy || s.busy) return { hint: 'Your request is being processed.', commands: [] };
+    if ((this.busy && !this.presentingReply) || s.busy) return { hint: 'Your request is being processed.', commands: [] };
     if (this.pending) return { hint: 'Confirm the action above, or cancel to keep your work.', commands: ['Yes, confirm', 'Cancel'] };
     if (this.dictating) return { hint: 'Speak your answer in your own words, then say:', commands: ['Finish my answer'] };
     if (s.evidence) {
@@ -33,10 +34,12 @@ export class VoiceFlow {
     if (['support', 'engineering', 'read_scenario', 'read_reference', 'type'].includes(this.lastAction)) return { hint: 'Write your own answer, or explore with a fictional sample.', commands: ['Record my answer', 'Use the sample response', 'Read the scenario'] };
     return { hint: 'Start a guided work sample.', commands: ['I want to write a response'] };
   }
-  async say(text) {
+  async say(text, { ready = true } = {}) {
     this.lastReply = text;
+    this.presentingReply = ready;
     this.app.update();
-    await this.app.say(text);
+    try { await this.app.say(text, { ready }); }
+    finally { this.presentingReply = false; }
   }
   sleep() { this.epoch++; this.awake = false; this.dictating = false; this.pending = null; this.app.update(); }
   ask(action, message, confirmed = true) {
@@ -150,7 +153,7 @@ export class VoiceFlow {
     const epoch = this.epoch;
     try {
       const mapping = { support: 'scenario', engineering: 'scenario', withdraw: 'unshare' };
-      if (action === 'submit') await this.say(s.followup ? 'Preparing your evidence card.' : 'Preparing your follow-up.');
+      if (action === 'submit') await this.say(s.followup ? 'Preparing your evidence card.' : 'Preparing your follow-up.', { ready: false });
       // The user may disable voice during the spoken acknowledgement.
       if (epoch !== this.epoch) return;
       await this.app.action(mapping[action] || action, action);

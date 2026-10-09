@@ -48,6 +48,7 @@ export function initVoice(adapter) {
   const messages = [];
   let enabled = false, speaking = false, recognition = null, restarting = null, cooldown = 0, speechId = 0, settleSpeech = null;
   let suggestionKey = '';
+  let suggestionNotBefore = 0, suggestionTimer = null;
   let testing = false, requestingMic = false, heardSound = false, testTimer = null, micAttempt = 0;
   const monitor = new MicrophoneMonitor({
     onLevel: (level, active) => {
@@ -93,7 +94,7 @@ export function initVoice(adapter) {
       ? { hint: 'Wake the guide when you are ready to talk.', commands: ['Hi Gemini'] }
       : flow.suggestions();
     const key = JSON.stringify(suggestions);
-    $('.voice-suggestions').hidden = working || speaking || !suggestions.commands.length;
+    $('.voice-suggestions').hidden = Date.now() < suggestionNotBefore || !suggestions.commands.length;
     if (key !== suggestionKey) {
       suggestionKey = key;
       $('.voice-suggestion-hint').textContent = suggestions.hint;
@@ -104,7 +105,7 @@ export function initVoice(adapter) {
         return button;
       }));
     }
-    $('.voice-suggestion-tip').textContent = enabled ? 'Say a suggestion, or click it to fill the message box.' : 'Enable the microphone to speak, or click a suggestion and press Send.';
+    $('.voice-suggestion-tip').textContent = speaking ? 'Choose your next step now. Wait for Listening before speaking or sending.' : enabled ? 'Say a suggestion, or click it to fill the message box.' : 'Enable the microphone to speak, or click a suggestion and press Send.';
   };
   const stopSpeech = () => {
     speechId++;
@@ -113,12 +114,17 @@ export function initVoice(adapter) {
     speaking = false; cooldown = Date.now() + 600; update();
   };
   const off = (message = 'Microphone off. Click Enable microphone to use voice again.') => {
+    clearTimeout(suggestionTimer); suggestionNotBefore = 0;
     micAttempt++; requestingMic = false; testing = false; clearTimeout(testTimer); monitor.stop();
     enabled = false; clearTimeout(restarting); recognition?.abort(); recognition = null;
     stopSpeech(); flow.sleep(); $('#voice-interim').textContent = ''; add('guide', message); update();
   };
-  async function say(text) {
+  async function say(text, { ready = true } = {}) {
     add('guide', text);
+    clearTimeout(suggestionTimer);
+    suggestionNotBefore = ready ? Date.now() + 1000 : Infinity;
+    if (ready) suggestionTimer = setTimeout(update, 1000);
+    update();
     if (!enabled || !window.speechSynthesis) return;
     stopSpeech();
     const id = speechId;

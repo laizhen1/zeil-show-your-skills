@@ -140,3 +140,18 @@ test('busy operations reject duplicate submissions and dictate length is bounded
   assert.equal(h.state.initial, '');
   assert.equal(h.flow.dictating, false);
 });
+
+test('next-step suggestions are available during a ready reply but not a processing announcement', async () => {
+  const h = harness();
+  h.state.followup = { question: 'How would you follow P1?' };
+  let finish;
+  h.flow.app.say = () => new Promise(resolve => { finish = resolve; });
+  h.flow.busy = true;
+  const reply = h.flow.say('How would you follow P1?');
+  assert.ok(h.flow.suggestions().commands.includes('Record my answer'));
+  assert.equal(h.flow.busy, true);
+  finish(); await reply;
+  const processing = h.flow.say('Preparing your follow-up.', { ready: false });
+  assert.deepEqual(h.flow.suggestions().commands, []);
+  finish(); await processing;
+});
