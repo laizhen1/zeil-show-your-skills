@@ -41,7 +41,7 @@
 .voice-close{border:0;border-radius:50%;background:#fff;width:30px;height:30px;font-size:24px;cursor:pointer;color:#654594}
 .voice-privacy,.voice-footnote{font-size:11px;line-height:1.5;color:#6f6877;margin:12px 16px}
 .voice-controls{display:flex;gap:8px;padding:0 16px 10px}.voice-controls .button{font-size:11px;padding:9px 12px;min-height:36px}
-.voice-chat{max-height:120px;overflow:auto;padding:0 16px;scroll-behavior:smooth}
+.voice-chat{max-height:240px;overflow:auto;padding:0 16px;scroll-behavior:smooth}
 .voice-message{display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:1.55;border-radius:12px;background:#f6f2fc;padding:10px 12px;margin:8px 0;overflow-wrap:anywhere}.voice-message strong{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#744aba}.voice-message.user{margin-left:30px;background:#8054ff;color:#fff}.voice-message.user strong{color:#eee4ff}
 .voice-interim{font-size:11px;color:#745694;margin:6px 16px;font-style:italic;max-height:44px;overflow:hidden}
 .voice-help{font-size:11px;margin:12px 16px;color:#675875}.voice-help summary{cursor:pointer;color:#7041d1;font-weight:600}.voice-help p{line-height:1.8}.voice-help ol{padding-left:20px;line-height:1.65}.voice-help li{padding-left:3px;margin:10px 0}.voice-help li::marker{color:#8054ff;font-weight:600}
@@ -59,3 +59,10 @@
 .mic-level{width:48px;height:12px;accent-color:#8054ff}.mic-level::-webkit-meter-bar{background:#eee8f7;border:0}.mic-level::-webkit-meter-optimum-value{background:#8054ff}
 .mic-test-controls{padding:0 16px 6px}.mic-test-controls button{font-size:11px}.mic-test-controls p{font-size:10px;color:#776987;line-height:1.5;margin:6px 0}
 @media(max-width:640px){.mic-indicator{right:16px;max-width:calc(100vw - 100px)}}
+
+.voice-controls{position:relative;padding-top:12px}
+.voice-control-popover{display:none;position:absolute;top:calc(100% - 10px);left:16px;right:16px;z-index:2;padding:12px 14px;border:1px solid #dbcef3;border-radius:12px;background:#fff;box-shadow:0 8px 24px #50317625;color:#6f6877;font-size:11px;line-height:1.5}
+.voice-control-popover p{margin:0 0 10px}.voice-control-popover p:last-child{margin-bottom:0}.voice-control-popover .mic-test-controls{padding:0}
+.voice-control-hint:hover .voice-control-popover,.voice-control-hint:focus-within .voice-control-popover{display:block}
+.voice-control-hint.hint-dismissed .voice-control-popover{display:none}
+#voice-command{padding-bottom:14px}

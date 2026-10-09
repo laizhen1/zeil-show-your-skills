@@ -9,9 +9,16 @@ export function initVoice(adapter) {
   root.setAttribute('aria-label', 'Voice guide');
   root.innerHTML = `<button class="mic-indicator" aria-label="Microphone status: off. Open voice controls."><span class="mic-light" aria-hidden="true"></span><span class="mic-indicator-label">Microphone off</span><meter class="mic-level" min="0" max="100" value="0" aria-label="Microphone input level"></meter></button><button class="voice-launcher" aria-expanded="false" aria-controls="voice-panel">Voice guide <span>Off</span></button>
     <section id="voice-panel" class="voice-panel" hidden><header><div><strong>Your voice guide</strong><p id="voice-status" role="status">Microphone off</p></div><button class="voice-close" aria-label="Minimise voice guide">&minus;</button></header>
-    <div class="voice-privacy">Enable voice, then say <strong>Hi Gemini</strong>. Chrome may send audio to its speech service, including while waiting for the wake phrase. Commands may be sent to Gemini. Use fictional information only.</div>
-    <div class="voice-controls"><button class="button" id="voice-microphone" aria-pressed="false">Enable microphone</button><button class="button secondary" id="voice-stop">Stop speaking</button></div>
-    <div class="mic-test-controls"><button class="text-button" id="mic-test">Test microphone</button><p id="mic-test-result" role="status">Test input locally before starting voice. No audio is recorded or sent by this test.</p></div>
+    <div class="voice-controls">
+      <div class="voice-control-hint"><button class="button" id="voice-microphone" aria-pressed="false" aria-describedby="mic-help">Enable microphone</button>
+        <div class="voice-control-popover"><p id="mic-help">Enable voice, then say <strong>Hi Gemini</strong>. Chrome may send audio to its speech service, including while waiting for the wake phrase. Commands may be sent to Gemini. Use fictional information only.</p>
+          <div class="mic-test-controls"><button class="text-button" id="mic-test">Test microphone</button><p id="mic-test-result" role="status">Test input locally before starting voice. No audio is recorded or sent by this test.</p></div>
+        </div>
+      </div>
+      <div class="voice-control-hint"><button class="button secondary" id="voice-stop" aria-describedby="stop-help">Stop speaking</button>
+        <div class="voice-control-popover"><p id="stop-help">Stop the guide’s spoken reply. This does not turn off the microphone. Use Turn off microphone to stop listening.</p><p>Browser speech with Gemini follow-up and evidence. Keep this tab active. Wait for Listening before speaking.</p></div>
+      </div>
+    </div>
     <div id="voice-chat" class="voice-chat" role="log" aria-label="Guide conversation" aria-live="polite"></div>
     <div class="voice-thinking" role="status" hidden><span aria-hidden="true"><i></i><i></i><i></i></span>Thinking</div>
     <p id="voice-interim" class="voice-interim"></p>
@@ -35,7 +42,7 @@ export function initVoice(adapter) {
       <p><strong>Other controls:</strong> “Repeat that”, “Stop speaking”, “Cancel” a confirmation, or “Go to sleep” to wait for “Hi Gemini” again. For an existing attempt, say “Start a new attempt”, then “Yes, confirm” to discard it.</p>
     </details>
     <form id="voice-command"><label for="voice-text">Or type a command</label><div><input id="voice-text" maxlength="600" autocomplete="off" placeholder="I want to write a response"><button class="button" type="submit">Send</button></div></form>
-    <p class="voice-footnote">Browser speech with Gemini follow-up and evidence. Keep this tab active. Wait for Listening before speaking.</p></section>`;
+    </section>`;
   document.body.append(root);
   const $ = selector => root.querySelector(selector);
   const messages = [];
@@ -209,6 +216,11 @@ export function initVoice(adapter) {
   $('.voice-launcher').onclick = () => { $('#voice-panel').hidden ? open() : minimise(); };
   const minimise = () => { $('#voice-panel').hidden = true; $('.voice-launcher').setAttribute('aria-expanded', 'false'); };
   $('.voice-close').onclick = minimise;
+  root.querySelectorAll('.voice-control-hint').forEach(hint => {
+    hint.addEventListener('keydown', event => { if (event.key === 'Escape') hint.classList.add('hint-dismissed'); });
+    hint.addEventListener('mouseleave', () => hint.classList.remove('hint-dismissed'));
+    hint.addEventListener('focusout', event => { if (!hint.contains(event.relatedTarget)) hint.classList.remove('hint-dismissed'); });
+  });
   $('.mic-indicator').onclick = open;
   $('#mic-test').onclick = testMicrophone;
   $('#voice-microphone').onclick = () => enabled ? off() : enable();
