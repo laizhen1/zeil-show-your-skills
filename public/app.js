@@ -136,7 +136,7 @@ async function performAction(action, { scenarioId, confirmed = false } = {}) {
     if (action === 'reset') {
       if (!confirmed && !window.confirm('Start a new attempt? This will discard the current answers and evidence card.')) return;
       await request('/api/reset', {});
-      Object.assign(state, { initial: '', revision: '', followup: null, evidence: null, approved: false, sampleUsed: false });
+      Object.assign(state, { initial: '', revision: '', followup: null, evidence: null, approved: false, sampleUsed: false, view: 'applicant', model: '' });
     }
   } catch (error) { state.error = error.message || 'Connection lost. Please try again.'; }
   finally {

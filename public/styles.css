@@ -33,12 +33,15 @@
 .voice-enabled .voice-launcher span{background:#8054ff;color:white}
 .voice-panel{width:350px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 108px);overflow:auto;background:white;border:1px solid #e6dcfb;border-radius:20px;box-shadow:0 12px 50px #34205625;margin-bottom:12px;position:absolute;bottom:48px;right:0}
 .voice-panel[hidden],.voice-thinking[hidden]{display:none}
+.voice-suggestions[hidden]{display:none}
+.voice-suggestions{margin:10px 16px;padding:12px;border:1px solid #dfd0ff;border-radius:13px;background:linear-gradient(130deg,#faf5ff,#f0eaff);animation:panel-enter .25s ease-out}
+.voice-suggestion-label{font-size:11px;font-weight:600;color:#7041d1;margin:0 0 5px}.voice-suggestion-hint{font-size:11px;line-height:1.5;color:#635471;margin:0 0 9px}.voice-suggestion-options{display:flex;flex-wrap:wrap;gap:6px}.voice-suggestion-options button{font:inherit;font-size:11px;line-height:1.4;text-align:left;padding:7px 10px;border:1px solid #c7b2f6;border-radius:12px;color:#6136b8;background:white;cursor:pointer}.voice-suggestion-options button:hover{background:#eee5ff;border-color:#8054ff}.voice-suggestion-tip{font-size:10px;line-height:1.4;color:#7b6b8d;margin:8px 0 0}
 .voice-panel header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;background:linear-gradient(120deg,#faf0fd,#f0eaff);border-bottom:1px solid #ece5f7}
 .voice-panel header strong{font-size:16px}.voice-panel header p{font-size:11px;margin:5px 0 0;color:#704abd}
 .voice-close{border:0;border-radius:50%;background:#fff;width:30px;height:30px;font-size:24px;cursor:pointer;color:#654594}
 .voice-privacy,.voice-footnote{font-size:11px;line-height:1.5;color:#6f6877;margin:12px 16px}
 .voice-controls{display:flex;gap:8px;padding:0 16px 10px}.voice-controls .button{font-size:11px;padding:9px 12px;min-height:36px}
-.voice-chat{max-height:190px;overflow:auto;padding:0 16px;scroll-behavior:smooth}
+.voice-chat{max-height:120px;overflow:auto;padding:0 16px;scroll-behavior:smooth}
 .voice-message{display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:1.55;border-radius:12px;background:#f6f2fc;padding:10px 12px;margin:8px 0;overflow-wrap:anywhere}.voice-message strong{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#744aba}.voice-message.user{margin-left:30px;background:#8054ff;color:#fff}.voice-message.user strong{color:#eee4ff}
 .voice-interim{font-size:11px;color:#745694;margin:6px 16px;font-style:italic;max-height:44px;overflow:hidden}
 .voice-help{font-size:11px;margin:12px 16px;color:#675875}.voice-help summary{cursor:pointer;color:#7041d1;font-weight:600}.voice-help p{line-height:1.8}.voice-help ol{padding-left:20px;line-height:1.65}.voice-help li{padding-left:3px;margin:10px 0}.voice-help li::marker{color:#8054ff;font-weight:600}

@@ -13,6 +13,7 @@ export function initVoice(adapter) {
     <div id="voice-chat" class="voice-chat" role="log" aria-label="Guide conversation" aria-live="polite"></div>
     <div class="voice-thinking" role="status" hidden><span aria-hidden="true"><i></i><i></i><i></i></span>Thinking</div>
     <p id="voice-interim" class="voice-interim"></p>
+    <div class="voice-suggestions" aria-label="Suggested next commands"><p class="voice-suggestion-label">Suggested to ask next</p><p class="voice-suggestion-hint" aria-live="polite"></p><div class="voice-suggestion-options"></div><p class="voice-suggestion-tip">Say a suggestion, or click it to fill the message box.</p></div>
     <details class="voice-help"><summary>What can I say?</summary>
       <p>After enabling the microphone, follow this sequence. Wait for the guide to finish speaking before each command.</p>
       <ol>
@@ -37,6 +38,7 @@ export function initVoice(adapter) {
   const $ = selector => root.querySelector(selector);
   const messages = [];
   let enabled = false, speaking = false, recognition = null, restarting = null, cooldown = 0, speechId = 0, settleSpeech = null;
+  let suggestionKey = '';
   const add = (role, text) => {
     messages.push({ role, text });
     if (messages.length > 16) messages.shift();
@@ -59,6 +61,22 @@ export function initVoice(adapter) {
     const working = !speaking && (flow.busy || adapter.state().busy);
     root.classList.toggle('voice-working', working);
     $('.voice-thinking').hidden = !working;
+    const suggestions = enabled && !flow.awake
+      ? { hint: 'Wake the guide when you are ready to talk.', commands: ['Hi Gemini'] }
+      : flow.suggestions();
+    const key = JSON.stringify(suggestions);
+    $('.voice-suggestions').hidden = working || speaking || !suggestions.commands.length;
+    if (key !== suggestionKey) {
+      suggestionKey = key;
+      $('.voice-suggestion-hint').textContent = suggestions.hint;
+      $('.voice-suggestion-options').replaceChildren(...suggestions.commands.map(command => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.textContent = command;
+        button.onclick = () => { $('#voice-text').value = command; $('#voice-text').focus(); };
+        return button;
+      }));
+    }
+    $('.voice-suggestion-tip').textContent = enabled ? 'Say a suggestion, or click it to fill the message box.' : 'Enable the microphone to speak, or click a suggestion and press Send.';
   };
   const stopSpeech = () => {
     speechId++;

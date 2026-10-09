@@ -8,11 +8,30 @@ export class VoiceFlow {
     this.pending = null;
     this.busy = false;
     this.lastReply = '';
+    this.lastAction = '';
     this.epoch = 0;
   }
   snapshot() {
     const s = this.app.state();
     return JSON.stringify([s.scenario.id, s.initial, s.revision, !!s.followup, !!s.evidence, s.approved, s.view]);
+  }
+  suggestions() {
+    const s = this.app.state();
+    if (this.busy || s.busy) return { hint: 'Your request is being processed.', commands: [] };
+    if (this.pending) return { hint: 'Confirm the action above, or cancel to keep your work.', commands: ['Yes, confirm', 'Cancel'] };
+    if (this.dictating) return { hint: 'Speak your answer in your own words, then say:', commands: ['Finish my answer'] };
+    if (s.evidence) {
+      if (s.approved) return { hint: 'Your evidence is shared in this demo. You can review it or begin again.', commands: s.view === 'recruiter' ? ['Explain my evidence', 'Start a new attempt', 'Turn off microphone'] : ['Open recruiter view', 'Start a new attempt', 'Turn off microphone'] };
+      return { hint: 'Review your evidence before deciding whether to share.', commands: this.lastAction === 'evidence' ? ['Share my evidence', 'Revise my response', 'Start a new attempt'] : ['Explain my evidence', 'Start a new attempt'] };
+    }
+    if (s.followup) {
+      if (['dictation_finished', 'read_answer'].includes(this.lastAction)) return { hint: 'Check your revision, then create your evidence card.', commands: ['Read my answer', 'Submit my revision'] };
+      return { hint: 'Respond to the follow-up with your own revision.', commands: ['Record my answer', 'Add to my answer', 'Read the reference'] };
+    }
+    if (s.initial) return { hint: 'Review your draft, then ask Gemini for a follow-up.', commands: ['Read my answer', 'Continue', 'Record my answer'] };
+    if (this.lastAction === 'start' || this.lastAction === 'reset') return { hint: 'Choose the work scenario you would like to try.', commands: ['Choose software engineering', 'Choose customer support'] };
+    if (['support', 'engineering', 'read_scenario', 'read_reference', 'type'].includes(this.lastAction)) return { hint: 'Write your own answer, or explore with a fictional sample.', commands: ['Record my answer', 'Use the sample response', 'Read the scenario'] };
+    return { hint: 'Start a guided work sample.', commands: ['I want to write a response'] };
   }
   async say(text) {
     this.lastReply = text;
@@ -52,6 +71,7 @@ export class VoiceFlow {
       }
       if (part.finished) {
         this.dictating = false;
+        this.lastAction = 'dictation_finished';
         await this.say('Your draft is ready. Say read my answer to check it, record my answer to replace it, or continue to submit it.');
       }
       this.app.update();
@@ -82,6 +102,7 @@ export class VoiceFlow {
   }
   async run(action, confirmed = false) {
     const s = this.app.state();
+    if (!['repeat', 'help', 'stop', 'sleep', 'off'].includes(action)) this.lastAction = action;
     if (action === 'repeat') return this.say(this.lastReply || 'Say help to hear the available commands.');
     if (action === 'help') return this.say('Say choose software engineering, choose customer support, use the sample response, record my answer, read my answer, continue, explain my evidence, or share my evidence. During dictation, say finish my answer to stop.');
     if (action === 'off') { this.sleep(); return this.app.off(); }
