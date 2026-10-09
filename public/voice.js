@@ -13,7 +13,24 @@ export function initVoice(adapter) {
     <div id="voice-chat" class="voice-chat" role="log" aria-label="Guide conversation" aria-live="polite"></div>
     <div class="voice-thinking" role="status" hidden><span aria-hidden="true"><i></i><i></i><i></i></span>Thinking</div>
     <p id="voice-interim" class="voice-interim"></p>
-    <details class="voice-help"><summary>What can I say?</summary><p>Choose software engineering · Choose customer support · Read the scenario · Read the reference · Use the sample response · Record my answer · Add to my answer · Finish my answer · Read my answer · Continue · Explain my evidence · Share my evidence · Open recruiter view · Go to sleep · Turn off microphone</p></details>
+    <details class="voice-help"><summary>What can I say?</summary>
+      <p>After enabling the microphone, follow this sequence. Wait for the guide to finish speaking before each command.</p>
+      <ol>
+        <li><strong>Wake the guide:</strong> “Hi Gemini”.</li>
+        <li><strong>Start:</strong> “I want to write a response”.</li>
+        <li><strong>Choose one:</strong> “Choose software engineering” or “Choose customer support”.</li>
+        <li><strong>Hear the task:</strong> “Read the scenario”, then “Read the reference” if needed.</li>
+        <li><strong>Enter an answer:</strong> “Use the sample response”, or “Record my answer”, speak your answer, then “Finish my answer”.</li>
+        <li><strong>Check and submit:</strong> “Read my answer”, then “Continue”. The guide reads Gemini’s follow-up.</li>
+        <li><strong>Revise:</strong> “Record my answer”, then “Yes, confirm” to replace the draft. Speak your revision, then “Finish my answer”. Use “Add to my answer” instead to keep and extend the draft.</li>
+        <li><strong>Create evidence:</strong> “Read my answer”, then “Submit my revision”.</li>
+        <li><strong>Review:</strong> “Explain my evidence”.</li>
+        <li><strong>Share when ready:</strong> “Share my evidence”, then “Yes, share it”.</li>
+        <li><strong>View as a recruiter:</strong> “Open recruiter view”.</li>
+        <li><strong>Finish:</strong> “Turn off microphone”.</li>
+      </ol>
+      <p><strong>Other controls:</strong> “Repeat that”, “Stop speaking”, “Cancel” a confirmation, or “Go to sleep” to wait for “Hi Gemini” again. For an existing attempt, say “Start a new attempt”, then “Yes, confirm” to discard it.</p>
+    </details>
     <form id="voice-command"><label for="voice-text">Or type a command</label><div><input id="voice-text" maxlength="600" autocomplete="off" placeholder="I want to write a response"><button class="button" type="submit">Send</button></div></form>
     <p class="voice-footnote">Browser speech with Gemini follow-up and evidence. Keep this tab active. Wait for Listening before speaking.</p></section>`;
   document.body.append(root);
